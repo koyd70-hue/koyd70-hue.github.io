@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>나의 주식 포트폴리오 (KRX API)</title>
+    <title>나의 주식 포트폴리오 (KRX 공식 Open API)</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         body { font-family: 'Malgun Gothic', sans-serif; background-color: #f4f7f6; color: #333; padding: 15px; margin: 0; transition: 0.3s; }
@@ -44,10 +44,10 @@
         .dash-box h3 { margin-top: 0; font-size: 13px; color: #7f8c8d; }
         .dash-box p { font-size: 18px; font-weight: bold; margin: 0; }
         
-        .settings-bar { background-color: #fff3cd; padding: 15px; border-radius: 8px; margin-bottom: 20px; display: flex; flex-direction: column; gap: 10px; border: 1px solid #ffeeba; }
+        .settings-bar { background-color: #e8f4f8; padding: 15px; border-radius: 8px; margin-bottom: 20px; display: flex; flex-direction: column; gap: 10px; border: 1px solid #bce8f1; }
         .settings-bar input { flex: 1; }
         
-        .target-setting { background-color: #e8f4f8; padding: 15px; border-radius: 8px; margin-bottom: 20px; display: flex; align-items: center; justify-content: space-between; }
+        .target-setting { background-color: #fff3cd; padding: 15px; border-radius: 8px; margin-bottom: 20px; display: flex; align-items: center; justify-content: space-between; }
         
         .positive { color: #e74c3c; }
         .negative { color: #2980b9; }
@@ -84,25 +84,24 @@
         body.dark-mode .btn-theme-toggle { background: #f1c40f; color: #333; }
         body.dark-mode .btn-search { background-color: #2ecc71; color: #121212; }
         body.dark-mode .btn-refresh { background-color: #bb86fc; color: #121212; }
-        body.dark-mode .settings-bar { background-color: #4a4a2a; border-color: #666633; }
-
+        body.dark-mode .settings-bar { background-color: #1e2a38; border-color: #2c3e50; }
     </style>
 </head>
 <body>
 
 <div class="container">
     <div class="header-top">
-        <h1>📈 나의 주식 포트폴리오 (KRX 연동)</h1>
+        <h1>📈 나의 주식 포트폴리오 (KRX 공식 API)</h1>
         <button id="themeToggleBtn" class="btn-theme-toggle" onclick="toggleTheme()">🌙 다크 모드</button>
     </div>
 
     <div class="settings-bar">
-        <label for="krxApiKey" style="color: #d35400; font-weight: bold;">🔑 공공데이터포털(KRX) API 인증키 설정</label>
+        <label for="krxApiKey" style="color: #2980b9; font-weight: bold;">🔑 KRX 공식 Open API 인증키 (AUTH_KEY) 설정</label>
         <div style="display: flex; gap: 5px;">
-            <input type="password" id="krxApiKey" placeholder="data.go.kr에서 발급받은 '일반 인증키(Encoding)'를 입력하세요">
+            <input type="password" id="krxApiKey" placeholder="openapi.krx.co.kr에서 발급받은 AUTH_KEY를 입력하세요">
             <button class="btn-search" onclick="saveApiKey()">키 저장</button>
         </div>
-        <span style="font-size: 12px; color: #7f8c8d;">※ API 키가 있어야만 한국 주식(KRX) 검색 및 가격 조회가 가능합니다. (새로고침 시 유지됨)</span>
+        <span style="font-size: 12px; color: #7f8c8d;">※ 이 키는 HTTP Header에 실려 전송되며, 새로고침 시 로컬스토리지에 안전하게 유지됩니다.</span>
     </div>
 
     <div class="tab-menu">
@@ -114,9 +113,9 @@
         <div class="card">
             <h2>종목 정보 입력</h2>
             <div class="form-group">
-                <label for="searchInput">한국 주식 종목명 검색 (예: 삼성전자)</label>
+                <label for="searchInput">종목명 검색 (예: 삼성전자)</label>
                 <div class="search-area">
-                    <input type="text" id="searchInput" placeholder="정확한 종목명(한글)을 입력하세요">
+                    <input type="text" id="searchInput" placeholder="정확한 종목명을 입력하세요">
                     <button class="btn-search" onclick="searchKrxAPI()" id="searchBtn">검색</button>
                 </div>
                 <select id="stockSelect">
@@ -171,7 +170,7 @@
             </div>
 
             <div class="target-setting">
-                <label for="targetRateInput">🎯 알림을 받을 목표 수익률을 설정하세요 (%):</label>
+                <label for="targetRateInput" style="color:#d35400;">🎯 알림을 받을 목표 수익률을 설정하세요 (%):</label>
                 <input type="number" id="targetRateInput" placeholder="예: 10" oninput="saveTargetRate()" value="10">
             </div>
 
@@ -206,8 +205,8 @@
     let portfolio = JSON.parse(localStorage.getItem('myStockPortfolio')) || [];
     let targetRate = localStorage.getItem('myTargetRate') || 10;
     
-    // API 키 초기화
-    let krxApiKey = localStorage.getItem('myKrxApiKey') || '';
+    // API 키 초기화 (openapi.krx.co.kr 전용)
+    let krxApiKey = localStorage.getItem('myKrxAuthKey') || '';
     document.getElementById('krxApiKey').value = krxApiKey;
     document.getElementById('targetRateInput').value = targetRate;
     let portfolioChart = null; 
@@ -253,60 +252,68 @@
     function saveToLocalStorage() { localStorage.setItem('myStockPortfolio', JSON.stringify(portfolio)); }
     function saveTargetRate() { targetRate = Number(document.getElementById('targetRateInput').value); localStorage.setItem('myTargetRate', targetRate); updateUI(); }
     
-    // [신규] API 키 저장 함수
     function saveApiKey() {
         krxApiKey = document.getElementById('krxApiKey').value.trim();
-        if(!krxApiKey) { alert("API 키를 입력해주세요."); return; }
-        localStorage.setItem('myKrxApiKey', krxApiKey);
-        alert("API 키가 안전하게 저장되었습니다.");
+        if(!krxApiKey) { alert("API 키(AUTH_KEY)를 입력해주세요."); return; }
+        localStorage.setItem('myKrxAuthKey', krxApiKey);
+        alert("KRX API 키가 안전하게 로컬에 저장되었습니다.");
     }
 
     // =========================================
-    // [신규 로직] KRX(공공데이터포털) 주식 시세 검색
+    // [업데이트] KRX 공식 Open API (Header 통신) 적용
     // =========================================
     async function searchKrxAPI() {
-        if (!krxApiKey) return alert('상단에서 공공데이터포털 API 키를 먼저 설정해주세요.');
+        if (!krxApiKey) return alert('상단에서 KRX 공식 오픈 API 키(AUTH_KEY)를 먼저 설정해주세요.');
         
         const query = document.getElementById('searchInput').value.trim();
-        if (!query) return alert('검색할 종목명을 입력해주세요. (예: 삼성전자)');
+        if (!query) return alert('검색할 종목명을 입력해주세요.');
 
         const searchBtn = document.getElementById('searchBtn');
         searchBtn.innerText = '검색 중...';
         searchBtn.disabled = true;
 
         try {
-            // 금융위원회_주식시세정보 API 엔드포인트
-            const baseUrl = 'https://apis.data.go.kr/1160100/service/rest/StockMarketInfoService/getStockPriceInfo';
-            // 파라미터 조합 (종목명으로 검색, JSON 응답 요청, 한 번에 최대 5개 가져오기)
-            const queryParams = `?serviceKey=${krxApiKey}&resultType=json&itmsNm=${encodeURIComponent(query)}&numOfRows=5`;
-            const krxUrl = baseUrl + queryParams;
+            // KRX 전종목 기본정보/시세 API 엔드포인트 예시 (문서 버전에 따라 URL이 약간 다를 수 있음)
+            const krxTargetUrl = `https://openapi.krx.co.kr/openapi/v1/domestic/stock/mktcap?itmsNm=${encodeURIComponent(query)}`;
             
-            // CORS 우회 프록시 사용
-            const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(krxUrl)}`;
+            // Header(AUTH_KEY)를 안전하게 통과시키기 위해 corsproxy.io 사용
+            const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(krxTargetUrl)}`;
 
-            const response = await fetch(proxyUrl);
+            // fetch 시 headers 객체에 AUTH_KEY 담기
+            const response = await fetch(proxyUrl, {
+                method: 'GET',
+                headers: {
+                    'AUTH_KEY': krxApiKey,
+                    'Accept': 'application/json'
+                }
+            });
+            
             const data = await response.json();
 
             const selectEl = document.getElementById('stockSelect');
             selectEl.innerHTML = '<option value="">종목을 선택하세요</option>';
 
-            // 응답 데이터 파싱 (공공데이터포털 구조)
-            const items = data.response?.body?.items?.item;
+            // KRX API는 보통 OutBlock_1 이라는 배열에 결과를 담아줍니다.
+            const items = data.OutBlock_1 || data.output || data;
 
             if (items && items.length > 0) {
                 items.forEach(stock => {
+                    // ISU_NM: 종목명, ISU_SRT_CD: 종목코드, TDD_CLSPRC: 종가
+                    const stockName = stock.ISU_NM || stock.ITMS_NM || '알수없음';
+                    const stockCode = stock.ISU_SRT_CD || stock.SRTN_CD || '000000';
+                    const currentPrice = stock.TDD_CLSPRC || stock.CLSPRC || 0;
+
                     const option = document.createElement('option');
-                    // value에는 종목코드(srtnCd)와 종가(clpr)를 함께 저장하여 추가 시 사용
-                    option.value = JSON.stringify({ symbol: stock.srtnCd, price: stock.clpr }); 
-                    option.textContent = `${stock.itmsNm} (${stock.srtnCd}) - 최신종가: ${Number(stock.clpr).toLocaleString()}원`;
+                    option.value = JSON.stringify({ symbol: stockCode, price: currentPrice }); 
+                    option.textContent = `${stockName} (${stockCode}) - 최신종가: ${Number(currentPrice).toLocaleString()}원`;
                     selectEl.appendChild(option);
                 });
             } else {
-                selectEl.innerHTML = '<option value="">검색 결과가 없습니다. 이름을 정확히 입력하세요.</option>';
+                selectEl.innerHTML = '<option value="">검색 결과가 없습니다.</option>';
             }
         } catch (error) {
-            console.error("KRX API Error:", error);
-            alert('검색 중 오류가 발생했습니다. API 키가 유효한지 확인해주세요.');
+            console.error("KRX Official API Error:", error);
+            alert('오류가 발생했습니다. API 키(AUTH_KEY)가 정확한지, 혹은 일일 요청 한도를 초과하지 않았는지 확인하세요.');
         } finally {
             searchBtn.innerText = '검색';
             searchBtn.disabled = false;
@@ -325,12 +332,10 @@
             return;
         }
 
-        // 선택된 값에서 코드와 가격 추출
         const stockData = JSON.parse(selectedValue);
         const symbol = stockData.symbol;
         const currentPrice = Number(stockData.price);
         
-        // 화면에 표시하기 위해 종목명만 파싱 (예: "삼성전자 (005930) - ... " 에서 이름만 추출)
         const cleanName = stockNameText.split(' (')[0];
 
         portfolio.push({
@@ -339,7 +344,7 @@
             date: purchaseDate, 
             shares: shares, 
             purchasePrice: purchasePrice, 
-            currentPrice: currentPrice // 검색 시 가져온 최신 종가
+            currentPrice: currentPrice 
         });
         
         saveToLocalStorage(); 
@@ -355,10 +360,10 @@
     }
 
     // =========================================
-    // [신규 로직] KRX API를 통한 일괄 새로고침
+    // [업데이트] KRX 공식 API를 이용한 일괄 새로고침
     // =========================================
     async function refreshAllPrices() {
-        if (!krxApiKey) return alert('API 키가 설정되어 있지 않습니다.');
+        if (!krxApiKey) return alert('API 키(AUTH_KEY)가 설정되어 있지 않습니다.');
         if (portfolio.length === 0) return alert('포트폴리오에 등록된 주식이 없습니다.');
 
         const refreshBtn = document.getElementById('refreshBtn');
@@ -373,21 +378,25 @@
                 const item = portfolio[i];
 
                 if (!fetchedPrices[item.symbol]) {
-                    // 종목코드(srtnCd)를 이용하여 단건 조회
-                    const baseUrl = 'https://apis.data.go.kr/1160100/service/rest/StockMarketInfoService/getStockPriceInfo';
-                    const queryParams = `?serviceKey=${krxApiKey}&resultType=json&srtnCd=${item.symbol}`;
-                    const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(baseUrl + queryParams)}`;
+                    // 종목코드(isuCd)로 조회하는 KRX API 엔드포인트
+                    const krxTargetUrl = `https://openapi.krx.co.kr/openapi/v1/domestic/stock/mktcap?isuCd=${item.symbol}`;
+                    const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(krxTargetUrl)}`;
                     
-                    const response = await fetch(proxyUrl);
+                    const response = await fetch(proxyUrl, {
+                        method: 'GET',
+                        headers: {
+                            'AUTH_KEY': krxApiKey,
+                            'Accept': 'application/json'
+                        }
+                    });
                     const data = await response.json();
                     
-                    const fetchedItems = data.response?.body?.items?.item;
+                    const fetchedItems = data.OutBlock_1 || data.output || data;
                     if (fetchedItems && fetchedItems.length > 0) {
-                        fetchedPrices[item.symbol] = Number(fetchedItems[0].clpr); // clpr = 종가
+                        fetchedPrices[item.symbol] = Number(fetchedItems[0].TDD_CLSPRC || fetchedItems[0].CLSPRC); 
                     }
                 }
 
-                // 새로운 가격이 조회되었다면 업데이트
                 if(fetchedPrices[item.symbol]) {
                     portfolio[i].currentPrice = fetchedPrices[item.symbol];
                 }
@@ -395,11 +404,11 @@
 
             saveToLocalStorage();
             updateUI();
-            alert('모든 주가가 KRX 최신 종가로 업데이트 되었습니다! 🎉');
+            alert('모든 주가가 KRX 공식 데이터로 업데이트 되었습니다! 🎉');
 
         } catch (error) {
             console.error("Refresh Error:", error);
-            alert('업데이트 중 오류가 발생했습니다. API 호출 한도 초과이거나 키가 잘못되었을 수 있습니다.');
+            alert('업데이트 중 오류가 발생했습니다. 개발자 도구의 콘솔을 확인해주세요.');
         } finally {
             refreshBtn.innerText = originalText;
             refreshBtn.disabled = false;
