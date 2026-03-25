@@ -63,7 +63,7 @@
 
     <script>
         // ★ 여기에 배포된 웹 앱 URL을 붙여넣으세요! ★
-        const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbzH05aJKHhwRjlxDQx7Sfqoba8-fTiQ7S2cvGNoEHvs6xmFM9jE6e9BxLMNxCkHWVvsZw/exec";
+        const WEB_APP_URL = "여기에_URL을_붙여넣으세요";
 
         // --- 1. 검색 버튼 클릭 이벤트 처리 ---
         document.getElementById('searchBtn').addEventListener('click', async () => {
@@ -105,3 +105,48 @@
         // --- 2. 폼 제출(등록) 이벤트 처리 ---
         document.getElementById('stockForm').addEventListener('submit', async (e) => {
             e.preventDefault();
+            
+            const btn = document.getElementById('submitBtn');
+            btn.innerText = "처리 중... 잠시만 기다려주세요.";
+            btn.disabled = true;
+
+            const requestData = {
+                action: "register", // action: register 추가
+                ticker: document.getElementById('ticker').value,
+                date: document.getElementById('date').value,
+                qty: document.getElementById('qty').value,
+                price: document.getElementById('price').value
+            };
+
+            try {
+                const response = await fetch(WEB_APP_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                    body: JSON.stringify(requestData)
+                });
+                
+                const result = await response.json();
+
+                if(result.status === 'success') {
+                    document.getElementById('resultBox').style.display = 'block';
+                    document.getElementById('resInvested').innerText = result.totalInvested.toLocaleString(undefined, {minimumFractionDigits: 2});
+                    document.getElementById('resPrice').innerText = result.currentPrice.toLocaleString(undefined, {minimumFractionDigits: 2});
+                    document.getElementById('resPct').innerText = (result.returnPct * 100).toFixed(2);
+                    document.getElementById('resAmt').innerText = result.returnAmt.toLocaleString(undefined, {minimumFractionDigits: 2});
+                    
+                    document.getElementById('stockForm').reset();
+                    document.getElementById('searchName').value = ''; // 검색칸도 초기화
+                } else {
+                    alert("오류가 발생했습니다: " + result.message);
+                }
+            } catch(err) {
+                console.error(err);
+                alert("서버 통신 실패.");
+            } finally {
+                btn.innerText = "포트폴리오에 등록하기";
+                btn.disabled = false;
+            }
+        });
+    </script>
+</body>
+</html>
