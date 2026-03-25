@@ -11,34 +11,21 @@
         label { font-weight: bold; margin-top: 15px; display: block; color: #555; font-size: 14px; }
         input, button { width: 100%; padding: 10px; margin-top: 5px; box-sizing: border-box; border-radius: 4px; border: 1px solid #ccc; }
         
-        /* 검색 영역 스타일 */
-        .search-box { display: flex; gap: 10px; margin-top: 5px; }
-        .search-box input { margin-top: 0; }
-        .search-box button { margin-top: 0; width: 30%; background-color: #007bff; color: white; border: none; cursor: pointer; }
-        .search-box button:hover { background-color: #0056b3; }
-        
         .submit-btn { background-color: #4CAF50; color: white; border: none; font-size: 16px; font-weight: bold; cursor: pointer; margin-top: 25px; padding: 12px; }
         .submit-btn:hover { background-color: #45a049; }
         .result { margin-top: 20px; padding: 20px; background-color: #e8f5e9; border-radius: 8px; display: none; }
         .result p { font-size: 16px; margin: 8px 0; }
         .highlight { font-weight: bold; color: #2e7d32; }
+        .stock-name { font-size: 18px; color: #1565c0; font-weight: bold; text-align: center; margin-bottom: 15px; border-bottom: 2px solid #bbdefb; padding-bottom: 10px; }
     </style>
 </head>
 <body>
     <div class="container">
         <h2>📈 주식 종목 등록</h2>
         
-        <label for="searchName">1. 한국 종목명 검색 (예: 삼성전자)</label>
-        <div class="search-box">
-            <input type="text" id="searchName" placeholder="종목명을 한글로 입력하세요">
-            <button type="button" id="searchBtn">검색하기</button>
-        </div>
-
-        <hr style="margin: 25px 0; border: 0; border-top: 1px solid #eee;">
-
         <form id="stockForm">
-            <label for="ticker">2. 종목코드 (검색 시 자동 입력됨)</label>
-            <input type="text" id="ticker" required placeholder="예: KRX:005930 또는 NASDAQ:AAPL">
+            <label for="ticker">종목코드 (한국 주식은 6자리 숫자만 입력)</label>
+            <input type="text" id="ticker" required placeholder="예: 005930 또는 NASDAQ:AAPL">
 
             <label for="date">매수 일자:</label>
             <input type="date" id="date" required>
@@ -53,7 +40,7 @@
         </form>
 
         <div id="resultBox" class="result">
-            <h3>📊 조회 및 계산 결과</h3>
+            <div class="stock-name" id="resName">종목명 표시</div>
             <p>총 투자 금액: <span class="highlight" id="resInvested"></span></p>
             <p>현재 주가: <span class="highlight" id="resPrice"></span></p>
             <p>투자 대비 수익률: <span class="highlight" id="resPct"></span>%</p>
@@ -65,44 +52,6 @@
         // ★ 여기에 배포된 웹 앱 URL을 붙여넣으세요! ★
         const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbzoXJWmFOMvOG1LmAep_kwoR4OU2JrQpGlN6pkVn7JndYBZGxRE_2627oA9Ofibm7WDmg/exec";
 
-        // --- 1. 검색 버튼 클릭 이벤트 처리 ---
-        document.getElementById('searchBtn').addEventListener('click', async () => {
-            const searchName = document.getElementById('searchName').value.trim();
-            if(!searchName) {
-                alert("검색할 종목명을 입력해주세요!");
-                return;
-            }
-
-            const searchBtn = document.getElementById('searchBtn');
-            searchBtn.innerText = "검색 중...";
-            searchBtn.disabled = true;
-
-            try {
-                const response = await fetch(WEB_APP_URL, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-                    body: JSON.stringify({ action: "search", keyword: searchName }) // action: search 추가
-                });
-                
-                const result = await response.json();
-
-                if(result.status === 'success') {
-                    // 검색된 코드를 입력 칸에 자동으로 넣어줍니다.
-                    document.getElementById('ticker').value = result.ticker;
-                    alert(`종목 코드를 찾았습니다: ${result.ticker}`);
-                } else {
-                    alert("종목을 찾을 수 없습니다. 정확한 이름을 입력하거나 직접 코드를 입력해주세요.");
-                }
-            } catch(err) {
-                console.error(err);
-                alert("검색 중 오류가 발생했습니다.");
-            } finally {
-                searchBtn.innerText = "검색하기";
-                searchBtn.disabled = false;
-            }
-        });
-
-        // --- 2. 폼 제출(등록) 이벤트 처리 ---
         document.getElementById('stockForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             
@@ -110,9 +59,17 @@
             btn.innerText = "처리 중... 잠시만 기다려주세요.";
             btn.disabled = true;
 
+            // 1. 사용자가 입력한 종목코드 가져오기
+            const rawTicker = document.getElementById('ticker').value.trim();
+            let finalTicker = rawTicker;
+
+            // 2. 입력값이 정확히 6자리 숫자라면 자동으로 KRX: 를 붙여줌 (정규표현식 사용)
+            if (/^\d{6}$/.test(rawTicker)) {
+                finalTicker = "KRX:" + rawTicker;
+            }
+
             const requestData = {
-                action: "register", // action: register 추가
-                ticker: document.getElementById('ticker').value,
+                ticker: finalTicker, // 변환된 티커를 서버로 전송
                 date: document.getElementById('date').value,
                 qty: document.getElementById('qty').value,
                 price: document.getElementById('price').value
@@ -129,19 +86,20 @@
 
                 if(result.status === 'success') {
                     document.getElementById('resultBox').style.display = 'block';
+                    // 받아온 종목명을 화면에 표시합니다.
+                    document.getElementById('resName').innerText = result.stockName;
                     document.getElementById('resInvested').innerText = result.totalInvested.toLocaleString(undefined, {minimumFractionDigits: 2});
                     document.getElementById('resPrice').innerText = result.currentPrice.toLocaleString(undefined, {minimumFractionDigits: 2});
                     document.getElementById('resPct').innerText = (result.returnPct * 100).toFixed(2);
                     document.getElementById('resAmt').innerText = result.returnAmt.toLocaleString(undefined, {minimumFractionDigits: 2});
                     
                     document.getElementById('stockForm').reset();
-                    document.getElementById('searchName').value = ''; // 검색칸도 초기화
                 } else {
                     alert("오류가 발생했습니다: " + result.message);
                 }
             } catch(err) {
                 console.error(err);
-                alert("서버 통신 실패.");
+                alert("서버 통신에 실패했습니다.");
             } finally {
                 btn.innerText = "포트폴리오에 등록하기";
                 btn.disabled = false;
