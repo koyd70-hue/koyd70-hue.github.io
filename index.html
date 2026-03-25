@@ -5,106 +5,227 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>주식 포트폴리오 관리</title>
     <style>
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f9f9f9; padding: 20px; }
-        .container { max-width: 500px; margin: 0 auto; background: white; padding: 30px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
-        h2 { text-align: center; color: #333; }
-        label { font-weight: bold; margin-top: 15px; display: block; color: #555; font-size: 14px; }
-        input, button { width: 100%; padding: 10px; margin-top: 5px; box-sizing: border-box; border-radius: 4px; border: 1px solid #ccc; }
+        body { font-family: 'Segoe UI', sans-serif; background-color: #f0f2f5; padding: 20px; color: #333; }
+        .container { max-width: 900px; margin: 0 auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        h2 { text-align: center; color: #1565c0; }
         
+        /* 탭 스타일 */
+        .tabs { display: flex; border-bottom: 2px solid #ddd; margin-bottom: 20px; }
+        .tab-btn { flex: 1; padding: 12px; cursor: pointer; border: none; background: none; font-size: 16px; font-weight: bold; color: #777; transition: 0.3s; }
+        .tab-btn:hover { background-color: #f9f9f9; }
+        .tab-btn.active { color: #1565c0; border-bottom: 3px solid #1565c0; background-color: #e3f2fd; }
+        .tab-content { display: none; animation: fadeIn 0.3s; }
+        .tab-content.active { display: block; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+        /* 폼 스타일 */
+        label { font-weight: bold; margin-top: 15px; display: block; font-size: 14px; }
+        input, button { width: 100%; padding: 10px; margin-top: 5px; box-sizing: border-box; border-radius: 4px; border: 1px solid #ccc; }
         .submit-btn { background-color: #4CAF50; color: white; border: none; font-size: 16px; font-weight: bold; cursor: pointer; margin-top: 25px; padding: 12px; }
         .submit-btn:hover { background-color: #45a049; }
-        .result { margin-top: 20px; padding: 20px; background-color: #e8f5e9; border-radius: 8px; display: none; }
-        .result p { font-size: 16px; margin: 8px 0; }
-        .highlight { font-weight: bold; color: #2e7d32; }
-        .stock-name { font-size: 18px; color: #1565c0; font-weight: bold; text-align: center; margin-bottom: 15px; border-bottom: 2px solid #bbdefb; padding-bottom: 10px; }
+
+        /* 테이블 스타일 */
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 14px; }
+        th, td { border: 1px solid #ddd; padding: 10px; text-align: center; }
+        th { background-color: #f4f4f4; font-weight: bold; }
+        .positive { color: #d32f2f; font-weight: bold; } /* 한국은 상승이 빨간색 */
+        .negative { color: #1976d2; font-weight: bold; } /* 하락이 파란색 */
+        
+        h3 { margin-top: 30px; border-bottom: 2px solid #eee; padding-bottom: 5px; }
     </style>
 </head>
 <body>
     <div class="container">
-        <h2>📈 주식 종목 등록</h2>
+        <h2>📊 나만의 주식 포트폴리오</h2>
         
-        <form id="stockForm">
-            <label for="ticker">종목코드 (한국 주식은 6자리 숫자만 입력)</label>
-            <input type="text" id="ticker" required placeholder="예: 005930 또는 NASDAQ:AAPL">
+        <div class="tabs">
+            <button class="tab-btn active" onclick="switchTab('tab-input', this)">종목 등록</button>
+            <button class="tab-btn" onclick="switchTab('tab-list', this)">포트폴리오 조회</button>
+            <button class="tab-btn" onclick="switchTab('tab-history', this)">수익 내역 (일/월별)</button>
+        </div>
 
-            <label for="date">매수 일자:</label>
-            <input type="date" id="date" required>
+        <div id="tab-input" class="tab-content active">
+            <form id="stockForm">
+                <label for="ticker">종목코드 (한국 주식은 6자리 숫자만 입력)</label>
+                <input type="text" id="ticker" required placeholder="예: 005930 또는 NASDAQ:AAPL">
+                <label for="date">매수 일자:</label>
+                <input type="date" id="date" required>
+                <label for="qty">매수량:</label>
+                <input type="number" id="qty" step="0.01" required>
+                <label for="price">매수 단가:</label>
+                <input type="number" id="price" step="0.01" required>
+                <button type="submit" class="submit-btn" id="submitBtn">포트폴리오에 등록하기</button>
+            </form>
+        </div>
 
-            <label for="qty">매수량:</label>
-            <input type="number" id="qty" step="0.01" required placeholder="예: 10">
+        <div id="tab-list" class="tab-content">
+            <table id="portfolioTable">
+                <thead>
+                    <tr>
+                        <th>종목명</th><th>코드</th><th>매수일자</th><th>수량</th>
+                        <th>매수단가</th><th>총 매수금액</th><th>현재가</th><th>수익금액</th><th>수익률</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    </tbody>
+            </table>
+        </div>
 
-            <label for="price">매수 단가:</label>
-            <input type="number" id="price" step="0.01" required placeholder="예: 75000">
+        <div id="tab-history" class="tab-content">
+            <h3>📅 일별 수익 내역</h3>
+            <table id="dailyTable">
+                <thead>
+                    <tr><th>날짜</th><th>종목명 (또는 합계)</th><th>투자금액</th><th>수익금액</th><th>수익률</th></tr>
+                </thead>
+                <tbody></tbody>
+            </table>
 
-            <button type="submit" class="submit-btn" id="submitBtn">포트폴리오에 등록하기</button>
-        </form>
-
-        <div id="resultBox" class="result">
-            <div class="stock-name" id="resName">종목명 표시</div>
-            <p>총 투자 금액: <span class="highlight" id="resInvested"></span></p>
-            <p>현재 주가: <span class="highlight" id="resPrice"></span></p>
-            <p>투자 대비 수익률: <span class="highlight" id="resPct"></span>%</p>
-            <p>투자 대비 수익금액: <span class="highlight" id="resAmt"></span></p>
+            <h3>🗓️ 월별 수익 내역 (매월 말일 기준)</h3>
+            <table id="monthlyTable">
+                <thead>
+                    <tr><th>월 (Month)</th><th>종목명 (또는 합계)</th><th>투자금액</th><th>수익금액</th><th>수익률</th></tr>
+                </thead>
+                <tbody></tbody>
+            </table>
         </div>
     </div>
 
     <script>
         // ★ 여기에 배포된 웹 앱 URL을 붙여넣으세요! ★
-        const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbzoXJWmFOMvOG1LmAep_kwoR4OU2JrQpGlN6pkVn7JndYBZGxRE_2627oA9Ofibm7WDmg/exec";
+        const WEB_APP_URL = "여기에_URL을_붙여넣으세요";
 
+        // 숫자 포맷 함수 (보기 좋게 콤마 및 소수점 처리)
+        const fmtNum = (num) => Number(num).toLocaleString(undefined, {maximumFractionDigits: 2});
+        const fmtPct = (num) => (Number(num) * 100).toFixed(2) + '%';
+        // 수익 양수/음수 색상 클래스
+        const getColor = (num) => num > 0 ? 'positive' : (num < 0 ? 'negative' : '');
+
+        // 탭 전환 로직
+        function switchTab(tabId, element) {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+            
+            document.getElementById(tabId).classList.add('active');
+            element.classList.add('active');
+
+            // 탭 클릭 시 데이터 불러오기
+            if (tabId === 'tab-list') loadPortfolio();
+            if (tabId === 'tab-history') loadHistory();
+        }
+
+        // 1. 등록 폼 제출
         document.getElementById('stockForm').addEventListener('submit', async (e) => {
             e.preventDefault();
-            
             const btn = document.getElementById('submitBtn');
-            btn.innerText = "처리 중... 잠시만 기다려주세요.";
-            btn.disabled = true;
+            btn.innerText = "처리 중..."; btn.disabled = true;
 
-            // 1. 사용자가 입력한 종목코드 가져오기
             const rawTicker = document.getElementById('ticker').value.trim();
-            let finalTicker = rawTicker;
-
-            // 2. 입력값이 정확히 6자리 숫자라면 자동으로 KRX: 를 붙여줌 (정규표현식 사용)
-            if (/^\d{6}$/.test(rawTicker)) {
-                finalTicker = "KRX:" + rawTicker;
-            }
-
-            const requestData = {
-                ticker: finalTicker, // 변환된 티커를 서버로 전송
-                date: document.getElementById('date').value,
-                qty: document.getElementById('qty').value,
-                price: document.getElementById('price').value
-            };
+            const finalTicker = /^\d{6}$/.test(rawTicker) ? "KRX:" + rawTicker : rawTicker;
 
             try {
-                const response = await fetch(WEB_APP_URL, {
+                const res = await fetch(WEB_APP_URL, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-                    body: JSON.stringify(requestData)
+                    body: JSON.stringify({
+                        action: "register",
+                        ticker: finalTicker,
+                        date: document.getElementById('date').value,
+                        qty: document.getElementById('qty').value,
+                        price: document.getElementById('price').value
+                    })
                 });
-                
-                const result = await response.json();
-
+                const result = await res.json();
                 if(result.status === 'success') {
-                    document.getElementById('resultBox').style.display = 'block';
-                    // 받아온 종목명을 화면에 표시합니다.
-                    document.getElementById('resName').innerText = result.stockName;
-                    document.getElementById('resInvested').innerText = result.totalInvested.toLocaleString(undefined, {minimumFractionDigits: 2});
-                    document.getElementById('resPrice').innerText = result.currentPrice.toLocaleString(undefined, {minimumFractionDigits: 2});
-                    document.getElementById('resPct').innerText = (result.returnPct * 100).toFixed(2);
-                    document.getElementById('resAmt').innerText = result.returnAmt.toLocaleString(undefined, {minimumFractionDigits: 2});
-                    
+                    alert("등록 완료! '포트폴리오 조회' 탭에서 확인하세요.");
                     document.getElementById('stockForm').reset();
-                } else {
-                    alert("오류가 발생했습니다: " + result.message);
                 }
-            } catch(err) {
-                console.error(err);
-                alert("서버 통신에 실패했습니다.");
-            } finally {
-                btn.innerText = "포트폴리오에 등록하기";
-                btn.disabled = false;
-            }
+            } catch(err) { alert("서버 통신 오류"); } 
+            finally { btn.innerText = "포트폴리오에 등록하기"; btn.disabled = false; }
         });
+
+        // 2. 포트폴리오 데이터 불러오기
+        async function loadPortfolio() {
+            const tbody = document.querySelector('#portfolioTable tbody');
+            tbody.innerHTML = "<tr><td colspan='9'>데이터를 불러오는 중입니다...</td></tr>";
+            
+            try {
+                const res = await fetch(WEB_APP_URL, { method: 'POST', body: JSON.stringify({action: "get_portfolio"}) });
+                const result = await res.json();
+                
+                if (result.data && result.data.length > 0) {
+                    tbody.innerHTML = result.data.map(row => `
+                        <tr>
+                            <td><b>${row.name}</b></td>
+                            <td>${row.ticker}</td>
+                            <td>${row.date}</td>
+                            <td>${row.qty}</td>
+                            <td>${fmtNum(row.buyPrice)}</td>
+                            <td>${fmtNum(row.invested)}</td>
+                            <td>${fmtNum(row.currentPrice)}</td>
+                            <td class="${getColor(row.returnAmt)}">${fmtNum(row.returnAmt)}</td>
+                            <td class="${getColor(row.returnPct)}">${fmtPct(row.returnPct)}</td>
+                        </tr>
+                    `).join('');
+                } else {
+                    tbody.innerHTML = "<tr><td colspan='9'>등록된 종목이 없습니다.</td></tr>";
+                }
+            } catch (err) { tbody.innerHTML = "<tr><td colspan='9'>오류가 발생했습니다.</td></tr>"; }
+        }
+
+        // 3. 일별/월별 내역 불러오기
+        async function loadHistory() {
+            const dBody = document.querySelector('#dailyTable tbody');
+            const mBody = document.querySelector('#monthlyTable tbody');
+            dBody.innerHTML = "<tr><td colspan='5'>데이터 불러오는 중...</td></tr>";
+            
+            try {
+                const res = await fetch(WEB_APP_URL, { method: 'POST', body: JSON.stringify({action: "get_history"}) });
+                const result = await res.json();
+                const data = result.data || [];
+
+                if (data.length === 0) {
+                    dBody.innerHTML = "<tr><td colspan='5'>아직 기록된 일별 데이터가 없습니다. (내일부터 기록됩니다)</td></tr>";
+                    mBody.innerHTML = "";
+                    return;
+                }
+
+                // 최신 날짜가 위로 오도록 정렬
+                data.sort((a, b) => new Date(b.date) - new Date(a.date));
+
+                // 일별 테이블 채우기
+                dBody.innerHTML = data.map(row => `
+                    <tr style="${row.ticker === 'TOTAL' ? 'background-color:#fffde7; font-weight:bold;' : ''}">
+                        <td>${row.date}</td>
+                        <td>${row.name}</td>
+                        <td>${fmtNum(row.invested)}</td>
+                        <td class="${getColor(row.returnAmt)}">${fmtNum(row.returnAmt)}</td>
+                        <td class="${getColor(row.returnPct)}">${fmtPct(row.returnPct)}</td>
+                    </tr>
+                `).join('');
+
+                // 월별 테이블 계산 (YYYY-MM 기준으로 그룹화하여 가장 마지막 날짜 데이터만 추출)
+                const monthlyMap = {};
+                // 과거 순으로 다시 정렬하여 덮어쓰기 방식으로 월의 '마지막 날' 데이터를 찾습니다.
+                const ascData = [...data].sort((a, b) => new Date(a.date) - new Date(b.date)); 
+                ascData.forEach(row => {
+                    const monthKey = row.date.substring(0, 7); // "2026-03" 추출
+                    const mapKey = monthKey + "_" + row.ticker; // "2026-03_KRX:005930"
+                    monthlyMap[mapKey] = { month: monthKey, ...row };
+                });
+
+                // 월별 테이블 채우기 (최신 월이 위로 오도록)
+                const monthlyArray = Object.values(monthlyMap).sort((a, b) => b.month.localeCompare(a.month));
+                mBody.innerHTML = monthlyArray.map(row => `
+                    <tr style="${row.ticker === 'TOTAL' ? 'background-color:#fffde7; font-weight:bold;' : ''}">
+                        <td>${row.month}</td>
+                        <td>${row.name}</td>
+                        <td>${fmtNum(row.invested)}</td>
+                        <td class="${getColor(row.returnAmt)}">${fmtNum(row.returnAmt)}</td>
+                        <td class="${getColor(row.returnPct)}">${fmtPct(row.returnPct)}</td>
+                    </tr>
+                `).join('');
+
+            } catch (err) { dBody.innerHTML = "<tr><td colspan='5'>오류가 발생했습니다.</td></tr>"; }
+        }
     </script>
 </body>
 </html>
