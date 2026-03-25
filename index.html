@@ -262,7 +262,7 @@
     // =========================================
     // [업데이트] KRX 공식 Open API (Header 통신) 적용
     // =========================================
-    async function searchKrxAPI() {
+   async function searchKrxAPI() {
         if (!krxApiKey) return alert('상단에서 KRX 공식 오픈 API 키(AUTH_KEY)를 먼저 설정해주세요.');
         
         const query = document.getElementById('searchInput').value.trim();
@@ -273,14 +273,11 @@
         searchBtn.disabled = true;
 
         try {
-            // KRX 전종목 기본정보/시세 API 엔드포인트 예시 (문서 버전에 따라 URL이 약간 다를 수 있음)
+            // [핵심 변경] 프록시(corsproxy)를 거치지 않고 직접 KRX 서버로 요청합니다!
+            // 단, 크롬 'Allow CORS' 확장 프로그램이 반드시 켜져 있어야 합니다.
             const krxTargetUrl = `https://openapi.krx.co.kr/openapi/v1/domestic/stock/mktcap?itmsNm=${encodeURIComponent(query)}`;
             
-            // Header(AUTH_KEY)를 안전하게 통과시키기 위해 corsproxy.io 사용
-            const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(krxTargetUrl)}`;
-
-            // fetch 시 headers 객체에 AUTH_KEY 담기
-            const response = await fetch(proxyUrl, {
+            const response = await fetch(krxTargetUrl, {
                 method: 'GET',
                 headers: {
                     'AUTH_KEY': krxApiKey,
@@ -288,17 +285,20 @@
                 }
             });
             
+            if (!response.ok) {
+                throw new Error(`서버 응답 오류 (상태 코드: ${response.status})`);
+            }
+
             const data = await response.json();
+            console.log("🔍 검색된 데이터 확인:", data); // F12 콘솔에서 데이터 내용 확인용
 
             const selectEl = document.getElementById('stockSelect');
             selectEl.innerHTML = '<option value="">종목을 선택하세요</option>';
 
-            // KRX API는 보통 OutBlock_1 이라는 배열에 결과를 담아줍니다.
             const items = data.OutBlock_1 || data.output || data;
 
             if (items && items.length > 0) {
                 items.forEach(stock => {
-                    // ISU_NM: 종목명, ISU_SRT_CD: 종목코드, TDD_CLSPRC: 종가
                     const stockName = stock.ISU_NM || stock.ITMS_NM || '알수없음';
                     const stockCode = stock.ISU_SRT_CD || stock.SRTN_CD || '000000';
                     const currentPrice = stock.TDD_CLSPRC || stock.CLSPRC || 0;
@@ -309,17 +309,17 @@
                     selectEl.appendChild(option);
                 });
             } else {
-                selectEl.innerHTML = '<option value="">검색 결과가 없습니다.</option>';
+                // KRX API는 이름이 정확히 일치해야만 결과를 줍니다.
+                selectEl.innerHTML = '<option value="">검색 결과 없음 (띄어쓰기 포함 정확한 풀네임을 입력하세요)</option>';
             }
         } catch (error) {
             console.error("KRX Official API Error:", error);
-            alert('오류가 발생했습니다. API 키(AUTH_KEY)가 정확한지, 혹은 일일 요청 한도를 초과하지 않았는지 확인하세요.');
+            alert('검색 중 오류가 발생했습니다. 크롬 우측 상단의 [Allow CORS] 확장 프로그램이 켜져(컬러풀하게) 있는지 꼭 확인해주세요!');
         } finally {
             searchBtn.innerText = '검색';
             searchBtn.disabled = false;
         }
     }
-
     function addInvestment() {
         const selectedValue = document.getElementById('stockSelect').value;
         const stockNameText = document.getElementById('stockSelect').options[document.getElementById('stockSelect').selectedIndex].text;
@@ -362,7 +362,7 @@
     // =========================================
     // [업데이트] KRX 공식 API를 이용한 일괄 새로고침
     // =========================================
-    async function refreshAllPrices() {
+async function refreshAllPrices() {
         if (!krxApiKey) return alert('API 키(AUTH_KEY)가 설정되어 있지 않습니다.');
         if (portfolio.length === 0) return alert('포트폴리오에 등록된 주식이 없습니다.');
 
@@ -378,22 +378,23 @@
                 const item = portfolio[i];
 
                 if (!fetchedPrices[item.symbol]) {
-                    // 종목코드(isuCd)로 조회하는 KRX API 엔드포인트
+                    // [핵심 변경] 여기도 프록시를 완전히 제거했습니다.
                     const krxTargetUrl = `https://openapi.krx.co.kr/openapi/v1/domestic/stock/mktcap?isuCd=${item.symbol}`;
-                    const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(krxTargetUrl)}`;
                     
-                    const response = await fetch(proxyUrl, {
+                    const response = await fetch(krxTargetUrl, {
                         method: 'GET',
                         headers: {
                             'AUTH_KEY': krxApiKey,
                             'Accept': 'application/json'
                         }
                     });
-                    const data = await response.json();
-                    
-                    const fetchedItems = data.OutBlock_1 || data.output || data;
-                    if (fetchedItems && fetchedItems.length > 0) {
-                        fetchedPrices[item.symbol] = Number(fetchedItems[0].TDD_CLSPRC || fetchedItems[0].CLSPRC); 
+
+                    if (response.ok) {
+                        const data = await response.json();
+                        const fetchedItems = data.OutBlock_1 || data.output || data;
+                        if (fetchedItems && fetchedItems.length > 0) {
+                            fetchedPrices[item.symbol] = Number(fetchedItems[0].TDD_CLSPRC || fetchedItems[0].CLSPRC); 
+                        }
                     }
                 }
 
@@ -408,7 +409,7 @@
 
         } catch (error) {
             console.error("Refresh Error:", error);
-            alert('업데이트 중 오류가 발생했습니다. 개발자 도구의 콘솔을 확인해주세요.');
+            alert('업데이트 중 오류가 발생했습니다. 확장 프로그램 활성화 상태를 확인해주세요.');
         } finally {
             refreshBtn.innerText = originalText;
             refreshBtn.disabled = false;
