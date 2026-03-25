@@ -4,110 +4,201 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>나의 주식 포트폴리오</title>
+    
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
     <style>
-        body { font-family: 'Malgun Gothic', sans-serif; background-color: #f4f7f6; color: #333; padding: 20px; }
+        /* 기본(라이트 모드) 스타일 */
+        body { font-family: 'Malgun Gothic', sans-serif; background-color: #f4f7f6; color: #333; padding: 15px; margin: 0; transition: background-color 0.3s, color 0.3s; }
         .container { max-width: 1000px; margin: 0 auto; }
-        .card { background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); margin-bottom: 20px; }
-        h1, h2 { color: #2c3e50; }
+        
+        /* [신규 기능] 상단 헤더 영역 레이아웃 (제목과 다크모드 버튼 나란히 배치) */
+        .header-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        h1 { color: #2c3e50; margin: 0; font-size: 24px; transition: color 0.3s; }
+        
+        /* [신규 기능] 다크 모드 토글 버튼 스타일 */
+        .btn-theme-toggle { background: #2c3e50; color: white; border: none; padding: 8px 15px; border-radius: 20px; cursor: pointer; font-size: 14px; font-weight: bold; transition: 0.3s; }
+        .btn-theme-toggle:hover { background: #1a252f; }
+
+        .tab-menu { display: flex; border-bottom: 2px solid #ccc; margin-bottom: 20px; }
+        .tab-btn { flex: 1; padding: 12px; cursor: pointer; background: #e9ecef; border: none; font-size: 15px; font-weight: bold; color: #7f8c8d; transition: 0.3s; border-radius: 8px 8px 0 0; margin-right: 5px; }
+        .tab-btn:last-child { margin-right: 0; }
+        .tab-btn:hover { background: #dcdde1; }
+        .tab-btn.active { background: #3498db; color: white; }
+
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+
+        .card { background: #fff; padding: 20px; border-radius: 0 0 8px 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); transition: background-color 0.3s; }
+        h2 { color: #2c3e50; margin-top: 0; font-size: 20px; transition: color 0.3s; }
+        
         .form-group { margin-bottom: 15px; }
-        label { display: block; margin-bottom: 5px; font-weight: bold; }
-        input, select { width: 100%; padding: 8px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 4px; }
+        label { display: block; margin-bottom: 5px; font-weight: bold; font-size: 14px; transition: color 0.3s; }
+        input, select { width: 100%; padding: 10px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 4px; font-size: 14px; transition: 0.3s; }
         input[readonly] { background-color: #e9ecef; }
-        .btn-main { background-color: #3498db; color: white; border: none; padding: 10px 15px; border-radius: 4px; cursor: pointer; font-size: 16px; width: 100%; }
+        .btn-main { background-color: #3498db; color: white; border: none; padding: 12px 15px; border-radius: 4px; cursor: pointer; font-size: 16px; width: 100%; font-weight: bold;}
         .btn-main:hover { background-color: #2980b9; }
         
-        .dashboard { display: flex; gap: 20px; margin-bottom: 20px; }
-        .dash-box { flex: 1; background: #ecf0f1; padding: 15px; border-radius: 8px; text-align: center; }
-        .dash-box h3 { margin-top: 0; font-size: 14px; color: #7f8c8d; }
-        .dash-box p { font-size: 20px; font-weight: bold; margin: 0; }
+        .dashboard { display: flex; gap: 15px; margin-bottom: 20px; }
+        .dash-box { flex: 1; background: #ecf0f1; padding: 15px; border-radius: 8px; text-align: center; transition: background-color 0.3s; }
+        .dash-box h3 { margin-top: 0; font-size: 13px; color: #7f8c8d; }
+        .dash-box p { font-size: 18px; font-weight: bold; margin: 0; }
+        
+        .target-setting { background-color: #e8f4f8; padding: 15px; border-radius: 8px; margin-bottom: 20px; display: flex; align-items: center; justify-content: space-between; transition: background-color 0.3s; }
+        .target-setting label { margin: 0; color: #2980b9; }
+        .target-setting input { width: 100px; padding: 8px; }
+
         .positive { color: #e74c3c; }
         .negative { color: #2980b9; }
 
-        table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 14px; }
-        th, td { border: 1px solid #ddd; padding: 10px; text-align: right; }
-        th { background-color: #f8f9fa; text-align: center; }
+        .chart-container { width: 100%; max-width: 400px; margin: 0 auto 30px; }
+
+        .table-responsive { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 14px; min-width: 800px; }
+        th, td { border: 1px solid #ddd; padding: 10px; text-align: right; white-space: nowrap; transition: 0.3s; }
+        th { background-color: #f8f9fa; text-align: center; cursor: pointer; }
+        th:hover { background-color: #e2e6ea; } 
         td:first-child { text-align: center; }
         
-        /* 수정/삭제 버튼 스타일 */
-        .btn-small { padding: 5px 10px; border: none; border-radius: 3px; cursor: pointer; margin: 0 2px; color: white; }
+        .highlight-row { background-color: #fff3cd !important; font-weight: bold; }
+        .badge { background-color: #e74c3c; color: white; padding: 2px 6px; border-radius: 4px; font-size: 12px; margin-left: 5px; }
+
+        .btn-small { padding: 6px 10px; border: none; border-radius: 3px; cursor: pointer; margin: 0 2px; color: white; font-size: 12px; }
         .btn-edit { background-color: #f39c12; }
         .btn-delete { background-color: #e74c3c; }
+
+        /* =========================================
+           [신규 기능] 다크 모드 (Dark Mode) 스타일 덮어쓰기 
+           ========================================= */
+        body.dark-mode { background-color: #121212; color: #e0e0e0; }
+        body.dark-mode h1, body.dark-mode h2, body.dark-mode label { color: #e0e0e0; }
+        body.dark-mode .card { background-color: #1e1e1e; box-shadow: 0 4px 6px rgba(0,0,0,0.5); }
+        body.dark-mode .tab-btn { background: #2d2d2d; color: #aaa; border-bottom-color: #444; }
+        body.dark-mode .tab-btn:hover { background: #3d3d3d; }
+        body.dark-mode .tab-btn.active { background: #bb86fc; color: #121212; }
+        body.dark-mode .btn-main { background-color: #bb86fc; color: #121212; }
+        body.dark-mode .btn-main:hover { background-color: #9965f4; }
+        body.dark-mode input, body.dark-mode select { background-color: #2d2d2d; color: #e0e0e0; border-color: #444; }
+        body.dark-mode input[readonly] { background-color: #1e1e1e; color: #888; }
+        body.dark-mode .dash-box { background-color: #2d2d2d; }
+        body.dark-mode .target-setting { background-color: #2d2d2d; }
+        body.dark-mode .target-setting label { color: #bb86fc; }
+        body.dark-mode th, body.dark-mode td { border-color: #444; }
+        body.dark-mode th { background-color: #2d2d2d; color: #e0e0e0; }
+        body.dark-mode th:hover { background-color: #3d3d3d; }
+        body.dark-mode .positive { color: #ff6b6b; } /* 다크모드에선 빨강을 조금 더 밝게 */
+        body.dark-mode .negative { color: #4dabf7; } /* 다크모드에선 파랑을 조금 더 밝게 */
+        body.dark-mode .highlight-row { background-color: #3a3a1c !important; color: #fff; } /* 다크모드용 하이라이트 */
+        body.dark-mode .btn-theme-toggle { background: #f1c40f; color: #333; }
+        body.dark-mode .btn-theme-toggle:hover { background: #d4ac0d; }
+
+        @media screen and (max-width: 768px) {
+            .header-top { flex-direction: column; gap: 10px; }
+            .dashboard { flex-wrap: wrap; }
+            .dash-box { flex: 1 1 45%; } 
+            .target-setting { flex-direction: column; align-items: flex-start; gap: 10px; }
+            .target-setting input { width: 100%; }
+        }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h1>📈 나의 주식 포트폴리오</h1>
-
-    <div class="card">
-        <h2>투자 내역 입력</h2>
-        <div class="form-group">
-            <label for="stockSelect">종목명 조회 및 선택</label>
-            <input list="stockList" id="stockSelect" placeholder="종목명을 검색하거나 선택하세요">
-            <datalist id="stockList">
-                <option value="삼성전자"></option>
-                <option value="SK하이닉스"></option>
-                <option value="네이버"></option>
-                <option value="카카오"></option>
-            </datalist>
-        </div>
-        <div class="form-group">
-            <label for="purchaseDate">매입일자</label>
-            <input type="date" id="purchaseDate">
-        </div>
-        <div class="form-group">
-            <label for="shares">매입 주식수 (주)</label>
-            <input type="number" id="shares" placeholder="예: 10" min="1">
-        </div>
-        <div class="form-group">
-            <label for="purchasePrice">매입단가 (원)</label>
-            <input type="number" id="purchasePrice" placeholder="예: 75000" min="0">
-        </div>
-        <div class="form-group">
-            <label for="investAmount">총 투자금액 (원)</label>
-            <input type="text" id="investAmount" readonly placeholder="자동으로 계산됩니다">
-        </div>
-        <button class="btn-main" onclick="addInvestment()">투자 내역 저장하기</button>
+    <div class="header-top">
+        <h1>📈 나의 주식 포트폴리오</h1>
+        <button id="themeToggleBtn" class="btn-theme-toggle" onclick="toggleTheme()">🌙 다크 모드</button>
     </div>
 
-    <div class="card">
-        <h2>투자 내역 조회</h2>
-        
-        <div class="dashboard">
-            <div class="dash-box">
-                <h3>총 투자금액</h3>
-                <p id="totalInvest">0 원</p>
+    <div class="tab-menu">
+        <button class="tab-btn active" id="btn-input" onclick="switchTab('tab-input', 'btn-input')">✍️ 투자 내역 입력</button>
+        <button class="tab-btn" id="btn-view" onclick="switchTab('tab-view', 'btn-view')">📊 투자 내역 조회</button>
+    </div>
+
+    <div id="tab-input" class="tab-content active">
+        <div class="card">
+            <h2>종목 정보 입력</h2>
+            <div class="form-group">
+                <label for="stockSelect">종목명 조회 및 선택</label>
+                <input list="stockList" id="stockSelect" placeholder="종목명을 검색하거나 선택하세요">
+                <datalist id="stockList">
+                    <option value="삼성전자"></option>
+                    <option value="SK하이닉스"></option>
+                    <option value="네이버"></option>
+                    <option value="카카오"></option>
+                </datalist>
             </div>
-            <div class="dash-box">
-                <h3>총 평가금액</h3>
-                <p id="totalValue">0 원</p>
+            <div class="form-group">
+                <label for="purchaseDate">매입일자</label>
+                <input type="date" id="purchaseDate">
             </div>
-            <div class="dash-box">
-                <h3>총 수익금액</h3>
-                <p id="totalProfit">0 원</p>
+            <div class="form-group">
+                <label for="shares">매입 주식수 (주)</label>
+                <input type="number" id="shares" placeholder="예: 10" min="1">
             </div>
-            <div class="dash-box">
-                <h3>총 수익률</h3>
-                <p id="totalReturn">0.00%</p>
+            <div class="form-group">
+                <label for="purchasePrice">매입단가 (원)</label>
+                <input type="number" id="purchasePrice" placeholder="예: 75000" min="0">
+            </div>
+            <div class="form-group">
+                <label for="investAmount">총 투자금액 (원)</label>
+                <input type="text" id="investAmount" readonly placeholder="수량과 단가를 입력하면 계산됩니다">
+            </div>
+            <button class="btn-main" onclick="addInvestment()">투자 내역 저장하기</button>
+        </div>
+    </div>
+
+    <div id="tab-view" class="tab-content">
+        <div class="card">
+            <h2>나의 포트폴리오 현황</h2>
+            
+            <div class="dashboard">
+                <div class="dash-box">
+                    <h3>총 투자금액</h3>
+                    <p id="totalInvest">0 원</p>
+                </div>
+                <div class="dash-box">
+                    <h3>총 평가금액</h3>
+                    <p id="totalValue">0 원</p>
+                </div>
+                <div class="dash-box">
+                    <h3>총 수익금액</h3>
+                    <p id="totalProfit">0 원</p>
+                </div>
+                <div class="dash-box">
+                    <h3>총 수익률</h3>
+                    <p id="totalReturn">0.00%</p>
+                </div>
+            </div>
+
+            <div class="target-setting">
+                <label for="targetRateInput">🎯 알림을 받을 목표 수익률을 설정하세요 (%):</label>
+                <input type="number" id="targetRateInput" placeholder="예: 10" oninput="saveTargetRate()" value="10">
+            </div>
+
+            <div class="chart-container">
+                <canvas id="portfolioChart"></canvas>
+            </div>
+
+            <div class="table-responsive">
+                <table>
+                    <thead>
+                        <tr>
+                            <th onclick="sortTable('name')">종목명 ↕️</th>
+                            <th onclick="sortTable('date')">매입일자 ↕️</th>
+                            <th onclick="sortTable('shares')">보유 주식수 ↕️</th>
+                            <th onclick="sortTable('purchasePrice')">매입단가 ↕️</th>
+                            <th onclick="sortTable('currentPrice')">현재가 ↕️</th>
+                            <th onclick="sortTable('investAmount')">투자금액 ↕️</th>
+                            <th onclick="sortTable('profit')">수익금액 ↕️</th>
+                            <th onclick="sortTable('returnRate')">수익률 ↕️</th>
+                            <th>관리</th>
+                        </tr>
+                    </thead>
+                    <tbody id="portfolioTableBody">
+                    </tbody>
+                </table>
             </div>
         </div>
-
-        <table>
-            <thead>
-                <tr>
-                    <th>종목명</th>
-                    <th>매입일자</th>
-                    <th>보유 주식수</th>
-                    <th>매입단가</th>
-                    <th>현재가</th>
-                    <th>투자금액</th>
-                    <th>수익금액</th>
-                    <th>수익률</th>
-                    <th>관리</th> </tr>
-            </thead>
-            <tbody id="portfolioTableBody">
-            </tbody>
-        </table>
     </div>
 </div>
 
@@ -119,8 +210,47 @@
         "카카오": 53000
     };
 
-    // 1. LocalStorage에서 데이터 불러오기 (없으면 빈 배열)
     let portfolio = JSON.parse(localStorage.getItem('myStockPortfolio')) || [];
+    let targetRate = localStorage.getItem('myTargetRate') || 10;
+    document.getElementById('targetRateInput').value = targetRate;
+    let portfolioChart = null; 
+
+    // =========================================
+    // [신규 기능] 다크 모드 설정 및 초기화 로직
+    // =========================================
+    const themeToggleBtn = document.getElementById('themeToggleBtn');
+    
+    // 페이지가 열릴 때 저장된 테마 확인
+    if (localStorage.getItem('myAppTheme') === 'dark') {
+        document.body.classList.add('dark-mode');
+        themeToggleBtn.innerText = '☀️ 라이트 모드';
+    }
+
+    // 테마 토글 버튼 클릭 시 실행되는 함수
+    function toggleTheme() {
+        // body 태그에 'dark-mode' 클래스가 있으면 빼고, 없으면 넣음
+        document.body.classList.toggle('dark-mode');
+        
+        // 현재 상태를 판단하여 로컬스토리지에 저장하고 버튼 글자 변경
+        if (document.body.classList.contains('dark-mode')) {
+            localStorage.setItem('myAppTheme', 'dark');
+            themeToggleBtn.innerText = '☀️ 라이트 모드';
+        } else {
+            localStorage.setItem('myAppTheme', 'light');
+            themeToggleBtn.innerText = '🌙 다크 모드';
+        }
+        
+        // 다크 모드일 때 차트 글씨색도 바뀌어야 하므로 차트를 다시 그림
+        drawChart(); 
+    }
+    // =========================================
+
+    function switchTab(tabId, btnId) {
+        document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+        document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+        document.getElementById(tabId).classList.add('active');
+        document.getElementById(btnId).classList.add('active');
+    }
 
     const sharesInput = document.getElementById('shares');
     const priceInput = document.getElementById('purchasePrice');
@@ -139,9 +269,14 @@
     sharesInput.addEventListener('input', calculateFormTotal);
     priceInput.addEventListener('input', calculateFormTotal);
 
-    // 2. LocalStorage에 데이터 저장하는 함수
     function saveToLocalStorage() {
         localStorage.setItem('myStockPortfolio', JSON.stringify(portfolio));
+    }
+
+    function saveTargetRate() {
+        targetRate = Number(document.getElementById('targetRateInput').value);
+        localStorage.setItem('myTargetRate', targetRate);
+        updateUI(); 
     }
 
     function addInvestment() {
@@ -154,22 +289,17 @@
             alert('모든 항목을 올바르게 입력해주세요.');
             return;
         }
-
         if (!currentPrices[stockName]) {
-            alert('현재 등록되지 않은 종목입니다. (가상 데이터 중 선택 요망)');
+            alert('현재 등록되지 않은 종목입니다.');
             return;
         }
 
-        const newInvestment = {
-            name: stockName,
-            date: purchaseDate,
-            shares: shares,
-            purchasePrice: purchasePrice,
-            currentPrice: currentPrices[stockName]
-        };
-
-        portfolio.push(newInvestment);
-        saveToLocalStorage(); // 데이터 저장
+        portfolio.push({
+            name: stockName, date: purchaseDate, shares: shares, 
+            purchasePrice: purchasePrice, currentPrice: currentPrices[stockName]
+        });
+        
+        saveToLocalStorage(); 
         updateUI();
 
         document.getElementById('stockSelect').value = '';
@@ -177,35 +307,96 @@
         sharesInput.value = '';
         priceInput.value = '';
         investAmountInput.value = '';
+        switchTab('tab-view', 'btn-view');
     }
 
-    // 3. 삭제 기능
     function deleteInvestment(index) {
         if(confirm('정말 삭제하시겠습니까?')) {
-            portfolio.splice(index, 1); // 배열에서 해당 인덱스 1개 제거
-            saveToLocalStorage();       // 변경된 배열 저장
-            updateUI();                 // 화면 갱신
+            portfolio.splice(index, 1); 
+            saveToLocalStorage();       
+            updateUI();                 
         }
     }
 
-    // 4. 수정 기능
     function editInvestment(index) {
         const item = portfolio[index];
-        
-        // 입력 폼에 기존 데이터 채우기
         document.getElementById('stockSelect').value = item.name;
         document.getElementById('purchaseDate').value = item.date;
         sharesInput.value = item.shares;
         priceInput.value = item.purchasePrice;
         calculateFormTotal();
 
-        // 기존 데이터는 삭제 (수정 후 새로 저장되도록)
         portfolio.splice(index, 1);
         saveToLocalStorage();
         updateUI();
-        
-        // 화면 스크롤을 위로 올려주기
-        window.scrollTo(0, 0);
+        switchTab('tab-input', 'btn-input');
+    }
+
+    function drawChart() {
+        const ctx = document.getElementById('portfolioChart').getContext('2d');
+        const aggregatedData = {};
+        portfolio.forEach(item => {
+            const investAmount = item.shares * item.purchasePrice;
+            if(aggregatedData[item.name]) aggregatedData[item.name] += investAmount;
+            else aggregatedData[item.name] = investAmount;
+        });
+
+        const labels = Object.keys(aggregatedData);
+        const data = Object.values(aggregatedData);
+
+        // [신규 기능] 다크 모드 여부에 따라 차트 글자 색상 결정
+        const isDark = document.body.classList.contains('dark-mode');
+        const chartTextColor = isDark ? '#e0e0e0' : '#333';
+
+        if (portfolioChart) portfolioChart.destroy();
+        portfolioChart = new Chart(ctx, {
+            type: 'pie',
+            data: { 
+                labels: labels, 
+                datasets: [{ 
+                    data: data, 
+                    backgroundColor: ['#3498db', '#e74c3c', '#f1c40f', '#2ecc71', '#9b59b6', '#34495e'],
+                    borderColor: isDark ? '#1e1e1e' : '#fff' // 다크모드일때 차트 경계선 색 변경
+                }] 
+            },
+            options: { 
+                responsive: true, 
+                plugins: { 
+                    legend: { position: 'bottom', labels: { color: chartTextColor } }, // 범례 글자색
+                    title: { display: true, text: '투자 원금 기준 포트폴리오 비중', color: chartTextColor } // 제목 글자색
+                } 
+            }
+        });
+    }
+
+    let currentSortColumn = '';
+    let isAscending = true; 
+
+    function sortTable(column) {
+        if (currentSortColumn === column) isAscending = !isAscending;
+        else { currentSortColumn = column; isAscending = true; }
+
+        portfolio.sort((a, b) => {
+            let valA, valB;
+            const investA = a.shares * a.purchasePrice;
+            const profitA = (a.shares * a.currentPrice) - investA;
+            const returnA = investA > 0 ? (profitA / investA) * 100 : 0;
+            const investB = b.shares * b.purchasePrice;
+            const profitB = (b.shares * b.currentPrice) - investB;
+            const returnB = investB > 0 ? (profitB / investB) * 100 : 0;
+
+            if (column === 'name') { valA = a.name; valB = b.name; }
+            else if (column === 'date') { valA = a.date; valB = b.date; }
+            else if (column === 'investAmount') { valA = investA; valB = investB; }
+            else if (column === 'profit') { valA = profitA; valB = profitB; }
+            else if (column === 'returnRate') { valA = returnA; valB = returnB; }
+            else { valA = a[column]; valB = b[column]; } 
+
+            if (valA < valB) return isAscending ? -1 : 1;
+            if (valA > valB) return isAscending ? 1 : -1;
+            return 0;
+        });
+        updateUI(); 
     }
 
     function updateUI() {
@@ -215,7 +406,6 @@
         let sumInvest = 0; 
         let sumValue = 0;  
 
-        // index 매개변수 추가 (수정/삭제 버튼에 사용)
         portfolio.forEach((item, index) => {
             const investAmount = item.shares * item.purchasePrice; 
             const currentValue = item.shares * item.currentPrice;  
@@ -225,11 +415,19 @@
             sumInvest += investAmount;
             sumValue += currentValue;
 
+            let isTargetReached = false;
+            let badgeHTML = '';
+            if(targetRate !== '' && targetRate !== 0 && returnRate >= targetRate) {
+                isTargetReached = true;
+                badgeHTML = `<span class="badge">🎯 달성</span>`;
+            }
+
             const colorClass = profit > 0 ? 'positive' : (profit < 0 ? 'negative' : '');
+            const rowClass = isTargetReached ? 'highlight-row' : ''; 
 
             const row = `
-                <tr>
-                    <td>${item.name}</td>
+                <tr class="${rowClass}">
+                    <td>${item.name} ${badgeHTML}</td>
                     <td>${item.date}</td>
                     <td>${item.shares.toLocaleString()} 주</td>
                     <td>${item.purchasePrice.toLocaleString()} 원</td>
@@ -264,9 +462,10 @@
         const returnEl = document.getElementById('totalReturn');
         returnEl.innerText = totalReturnRate.toFixed(2) + '%';
         returnEl.className = totalColorClass;
+
+        drawChart();
     }
 
-    // 페이지 로딩 시 최초 1회 화면 그리기
     updateUI();
 </script>
 
