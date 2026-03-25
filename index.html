@@ -28,13 +28,17 @@
         input, select { width: 100%; padding: 10px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 4px; font-size: 14px; }
         input[readonly] { background-color: #e9ecef; }
         
-        /* [신규] 검색 영역 스타일 */
         .search-area { display: flex; gap: 5px; margin-bottom: 10px; }
         .btn-search { background-color: #2ecc71; color: white; border: none; padding: 10px; border-radius: 4px; cursor: pointer; font-weight: bold; white-space: nowrap; }
         .btn-search:hover { background-color: #27ae60; }
         
         .btn-main { background-color: #3498db; color: white; border: none; padding: 12px 15px; border-radius: 4px; cursor: pointer; font-size: 16px; width: 100%; font-weight: bold; }
         .btn-main:hover { background-color: #2980b9; }
+
+        /* [신규] 새로고침 버튼 스타일 */
+        .action-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
+        .btn-refresh { background-color: #9b59b6; color: white; border: none; padding: 10px 15px; border-radius: 4px; cursor: pointer; font-size: 14px; font-weight: bold; transition: background-color 0.3s; }
+        .btn-refresh:hover { background-color: #8e44ad; }
         
         .dashboard { display: flex; gap: 15px; margin-bottom: 20px; }
         .dash-box { flex: 1; background: #ecf0f1; padding: 15px; border-radius: 8px; text-align: center; }
@@ -59,7 +63,7 @@
         .btn-edit { background-color: #f39c12; }
         .btn-delete { background-color: #e74c3c; }
 
-        /* 다크 모드 스타일 (생략 없이 이전과 동일) */
+        /* 다크 모드 스타일 */
         body.dark-mode { background-color: #121212; color: #e0e0e0; }
         body.dark-mode h1, body.dark-mode h2, body.dark-mode label { color: #e0e0e0; }
         body.dark-mode .card { background-color: #1e1e1e; box-shadow: 0 4px 6px rgba(0,0,0,0.5); }
@@ -76,6 +80,7 @@
         body.dark-mode .highlight-row { background-color: #3a3a1c !important; color: #fff; }
         body.dark-mode .btn-theme-toggle { background: #f1c40f; color: #333; }
         body.dark-mode .btn-search { background-color: #2ecc71; color: #121212; }
+        body.dark-mode .btn-refresh { background-color: #bb86fc; color: #121212; }
 
     </style>
 </head>
@@ -95,7 +100,6 @@
     <div id="tab-input" class="tab-content active">
         <div class="card">
             <h2>종목 정보 입력</h2>
-            
             <div class="form-group">
                 <label for="searchInput">종목명 검색 (티커, 영문, 한글)</label>
                 <div class="search-area">
@@ -129,7 +133,11 @@
 
     <div id="tab-view" class="tab-content">
         <div class="card">
-            <h2>나의 포트폴리오 현황</h2>
+            <div class="action-bar">
+                <h2>나의 포트폴리오 현황</h2>
+                <button class="btn-refresh" id="refreshBtn" onclick="refreshAllPrices()">🔄 최신 주가 모두 새로고침</button>
+            </div>
+            
             <div class="dashboard">
                 <div class="dash-box">
                     <h3>총 투자금액</h3>
@@ -186,13 +194,11 @@
 </div>
 
 <script>
-    // 기존 가상 데이터(currentPrices)는 삭제되었습니다!
     let portfolio = JSON.parse(localStorage.getItem('myStockPortfolio')) || [];
     let targetRate = localStorage.getItem('myTargetRate') || 10;
     document.getElementById('targetRateInput').value = targetRate;
     let portfolioChart = null; 
 
-    // 다크 모드
     const themeToggleBtn = document.getElementById('themeToggleBtn');
     if (localStorage.getItem('myAppTheme') === 'dark') {
         document.body.classList.add('dark-mode');
@@ -233,9 +239,6 @@
     function saveToLocalStorage() { localStorage.setItem('myStockPortfolio', JSON.stringify(portfolio)); }
     function saveTargetRate() { targetRate = Number(document.getElementById('targetRateInput').value); localStorage.setItem('myTargetRate', targetRate); updateUI(); }
 
-    // =========================================
-    // [신규 기능 1] Yahoo Finance 검색 API 호출
-    // =========================================
     async function searchStockAPI() {
         const query = document.getElementById('searchInput').value.trim();
         if (!query) return alert('검색어를 입력해주세요.');
@@ -245,9 +248,7 @@
         searchBtn.disabled = true;
 
         try {
-            // Yahoo API URL
             const yahooUrl = `https://query2.finance.yahoo.com/v1/finance/search?q=${encodeURIComponent(query)}`;
-            // CORS 우회용 프록시 URL 연동
             const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(yahooUrl)}`;
 
             const response = await fetch(proxyUrl);
@@ -256,14 +257,11 @@
             const selectEl = document.getElementById('stockSelect');
             selectEl.innerHTML = '<option value="">종목을 선택하세요</option>';
 
-            // 검색 결과가 있는 경우 옵션으로 추가
             if (data.quotes && data.quotes.length > 0) {
                 data.quotes.forEach(quote => {
-                    // 주식(EQUITY)이나 ETF 등만 표시하도록 필터링
                     if (quote.quoteType === 'EQUITY' || quote.quoteType === 'ETF') {
                         const option = document.createElement('option');
-                        option.value = quote.symbol; // 핵심 데이터: 티커(Ticker)
-                        // 표시 형태: Apple Inc. (AAPL)
+                        option.value = quote.symbol; 
                         option.textContent = `${quote.shortname || quote.longname} (${quote.symbol})`;
                         selectEl.appendChild(option);
                     }
@@ -280,9 +278,6 @@
         }
     }
 
-    // =========================================
-    // [신규 기능 2] Yahoo Finance 주가 조회 후 저장
-    // =========================================
     async function addInvestment() {
         const symbol = document.getElementById('stockSelect').value;
         const stockNameText = document.getElementById('stockSelect').options[document.getElementById('stockSelect').selectedIndex].text;
@@ -300,16 +295,14 @@
         saveBtn.disabled = true;
 
         try {
-            // 현재가 조회를 위한 Yahoo Chart API
             const yahooChartUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}`;
             const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(yahooChartUrl)}`;
 
             const response = await fetch(proxyUrl);
             const data = await response.json();
 
-            // JSON 데이터 깊은 곳에서 현재가(regularMarketPrice)와 통화 단위(currency) 꺼내기
             const currentPrice = data.chart.result[0].meta.regularMarketPrice;
-            const currency = data.chart.result[0].meta.currency; // 예: USD, KRW
+            const currency = data.chart.result[0].meta.currency; 
 
             portfolio.push({
                 name: stockNameText, 
@@ -318,13 +311,12 @@
                 date: purchaseDate, 
                 shares: shares, 
                 purchasePrice: purchasePrice, 
-                currentPrice: currentPrice // API에서 방금 가져온 진짜 현재가!
+                currentPrice: currentPrice
             });
             
             saveToLocalStorage(); 
             updateUI();
 
-            // 폼 초기화
             document.getElementById('searchInput').value = '';
             document.getElementById('stockSelect').innerHTML = '<option value="">검색 후 정확한 종목을 선택하세요</option>';
             document.getElementById('purchaseDate').value = '';
@@ -342,6 +334,60 @@
         }
     }
 
+    // =========================================
+    // [신규 기능] 포트폴리오 내 모든 종목 주가 일괄 업데이트
+    // =========================================
+    async function refreshAllPrices() {
+        if (portfolio.length === 0) {
+            alert('포트폴리오에 등록된 주식이 없습니다.');
+            return;
+        }
+
+        const refreshBtn = document.getElementById('refreshBtn');
+        const originalText = refreshBtn.innerText;
+        refreshBtn.innerText = '🔄 주가 업데이트 중...';
+        refreshBtn.disabled = true;
+
+        try {
+            // 중복 조회를 막기 위한 빈 보관함 (예: 삼성전자가 2개면 한 번만 조회)
+            const fetchedPrices = {};
+
+            // 포트폴리오의 각 항목을 순회
+            for (let i = 0; i < portfolio.length; i++) {
+                const item = portfolio[i];
+
+                // 아직 조회하지 않은 종목 기호(티커)라면 API 호출
+                if (!fetchedPrices[item.symbol]) {
+                    const yahooChartUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${item.symbol}`;
+                    const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(yahooChartUrl)}`;
+                    
+                    const response = await fetch(proxyUrl);
+                    const data = await response.json();
+                    
+                    // 가격을 꺼내서 보관함에 저장
+                    fetchedPrices[item.symbol] = data.chart.result[0].meta.regularMarketPrice;
+                }
+
+                // 보관함에 있는 최신 가격으로 내 포트폴리오 항목 업데이트
+                portfolio[i].currentPrice = fetchedPrices[item.symbol];
+            }
+
+            // 모든 업데이트가 끝나면 브라우저에 저장하고 화면 다시 그리기
+            saveToLocalStorage();
+            updateUI();
+            
+            alert('모든 주가가 최신 데이터로 업데이트 되었습니다! 🎉');
+
+        } catch (error) {
+            console.error("Refresh Error:", error);
+            alert('일부 주가를 업데이트하는 과정에서 오류가 발생했습니다. 잠시 후 시도해주세요.');
+        } finally {
+            // 버튼 상태 원래대로 복구
+            refreshBtn.innerText = originalText;
+            refreshBtn.disabled = false;
+        }
+    }
+
     function deleteInvestment(index) {
         if(confirm('정말 삭제하시겠습니까?')) { portfolio.splice(index, 1); saveToLocalStorage(); updateUI(); }
     }
@@ -349,7 +395,6 @@
     function editInvestment(index) {
         alert("수정 시 검색을 다시 진행하여 종목을 세팅해야 합니다.");
         const item = portfolio[index];
-        // 검색어 입력칸에 티커만 임시로 넣어둠
         document.getElementById('searchInput').value = item.symbol;
         document.getElementById('purchaseDate').value = item.date;
         sharesInput.value = item.shares;
@@ -438,7 +483,6 @@
             const colorClass = profit > 0 ? 'positive' : (profit < 0 ? 'negative' : '');
             const rowClass = isTargetReached ? 'highlight-row' : ''; 
             
-            // 통화 기호 (KRW는 '₩', USD는 '$', 그 외는 그대로 표시)
             const symbolMap = { 'KRW': '₩', 'USD': '$' };
             const currSymbol = symbolMap[item.currency] || item.currency + ' ';
 
@@ -467,7 +511,6 @@
 
         const totalColorClass = totalProfit > 0 ? 'positive' : (totalProfit < 0 ? 'negative' : '');
 
-        // 대시보드 합계는 단순히 숫자들의 합으로 표시 (통화가 섞일 수 있으므로 기호 생략)
         document.getElementById('totalInvest').innerText = sumInvest.toLocaleString();
         document.getElementById('totalValue').innerText = sumValue.toLocaleString();
         
