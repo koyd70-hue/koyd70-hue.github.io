@@ -3,20 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>나의 주식 포트폴리오</title>
-    
+    <title>나의 주식 포트폴리오 (실시간 연동)</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
     <style>
-        /* 기본(라이트 모드) 스타일 */
         body { font-family: 'Malgun Gothic', sans-serif; background-color: #f4f7f6; color: #333; padding: 15px; margin: 0; transition: background-color 0.3s, color 0.3s; }
         .container { max-width: 1000px; margin: 0 auto; }
-        
-        /* [신규 기능] 상단 헤더 영역 레이아웃 (제목과 다크모드 버튼 나란히 배치) */
         .header-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
         h1 { color: #2c3e50; margin: 0; font-size: 24px; transition: color 0.3s; }
-        
-        /* [신규 기능] 다크 모드 토글 버튼 스타일 */
         .btn-theme-toggle { background: #2c3e50; color: white; border: none; padding: 8px 15px; border-radius: 20px; cursor: pointer; font-size: 14px; font-weight: bold; transition: 0.3s; }
         .btn-theme-toggle:hover { background: #1a252f; }
 
@@ -30,14 +23,18 @@
         .tab-content.active { display: block; }
 
         .card { background: #fff; padding: 20px; border-radius: 0 0 8px 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); transition: background-color 0.3s; }
-        h2 { color: #2c3e50; margin-top: 0; font-size: 20px; transition: color 0.3s; }
+        h2 { color: #2c3e50; margin-top: 0; font-size: 20px; transition: color 0.3s; display: flex; justify-content: space-between; align-items: center; }
         
         .form-group { margin-bottom: 15px; }
         label { display: block; margin-bottom: 5px; font-weight: bold; font-size: 14px; transition: color 0.3s; }
         input, select { width: 100%; padding: 10px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 4px; font-size: 14px; transition: 0.3s; }
         input[readonly] { background-color: #e9ecef; }
+        
+        /* 버튼 스타일들 */
         .btn-main { background-color: #3498db; color: white; border: none; padding: 12px 15px; border-radius: 4px; cursor: pointer; font-size: 16px; width: 100%; font-weight: bold;}
         .btn-main:hover { background-color: #2980b9; }
+        .btn-refresh { background-color: #2ecc71; color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer; font-size: 14px; }
+        .btn-refresh:hover { background-color: #27ae60; }
         
         .dashboard { display: flex; gap: 15px; margin-bottom: 20px; }
         .dash-box { flex: 1; background: #ecf0f1; padding: 15px; border-radius: 8px; text-align: center; transition: background-color 0.3s; }
@@ -50,6 +47,7 @@
 
         .positive { color: #e74c3c; }
         .negative { color: #2980b9; }
+        .loading-text { color: #f39c12; font-weight: bold; font-size: 14px; margin-left: 10px; display: none; }
 
         .chart-container { width: 100%; max-width: 400px; margin: 0 auto 30px; }
 
@@ -67,9 +65,7 @@
         .btn-edit { background-color: #f39c12; }
         .btn-delete { background-color: #e74c3c; }
 
-        /* =========================================
-           [신규 기능] 다크 모드 (Dark Mode) 스타일 덮어쓰기 
-           ========================================= */
+        /* 다크 모드 스타일 */
         body.dark-mode { background-color: #121212; color: #e0e0e0; }
         body.dark-mode h1, body.dark-mode h2, body.dark-mode label { color: #e0e0e0; }
         body.dark-mode .card { background-color: #1e1e1e; box-shadow: 0 4px 6px rgba(0,0,0,0.5); }
@@ -86,9 +82,9 @@
         body.dark-mode th, body.dark-mode td { border-color: #444; }
         body.dark-mode th { background-color: #2d2d2d; color: #e0e0e0; }
         body.dark-mode th:hover { background-color: #3d3d3d; }
-        body.dark-mode .positive { color: #ff6b6b; } /* 다크모드에선 빨강을 조금 더 밝게 */
-        body.dark-mode .negative { color: #4dabf7; } /* 다크모드에선 파랑을 조금 더 밝게 */
-        body.dark-mode .highlight-row { background-color: #3a3a1c !important; color: #fff; } /* 다크모드용 하이라이트 */
+        body.dark-mode .positive { color: #ff6b6b; } 
+        body.dark-mode .negative { color: #4dabf7; } 
+        body.dark-mode .highlight-row { background-color: #3a3a1c !important; color: #fff; } 
         body.dark-mode .btn-theme-toggle { background: #f1c40f; color: #333; }
         body.dark-mode .btn-theme-toggle:hover { background: #d4ac0d; }
 
@@ -118,11 +114,12 @@
         <div class="card">
             <h2>종목 정보 입력</h2>
             <div class="form-group">
-                <label for="stockSelect">종목명 조회 및 선택</label>
-                <input list="stockList" id="stockSelect" placeholder="종목명을 검색하거나 선택하세요">
+                <label for="stockSelect">종목명 조회 및 선택 (Yahoo Finance 지원 종목)</label>
+                <input list="stockList" id="stockSelect" placeholder="종목명을 선택하세요">
                 <datalist id="stockList">
                     <option value="삼성전자"></option>
                     <option value="SK하이닉스"></option>
+                    <option value="현대차"></option>
                     <option value="네이버"></option>
                     <option value="카카오"></option>
                 </datalist>
@@ -149,7 +146,13 @@
 
     <div id="tab-view" class="tab-content">
         <div class="card">
-            <h2>나의 포트폴리오 현황</h2>
+            <h2>
+                나의 포트폴리오 현황
+                <div>
+                    <span id="loadingMsg" class="loading-text">⏳ 실시간 주가 불러오는 중...</span>
+                    <button class="btn-refresh" onclick="fetchLivePrices()">🔄 실시간 주가 갱신</button>
+                </div>
+            </h2>
             
             <div class="dashboard">
                 <div class="dash-box">
@@ -187,7 +190,7 @@
                             <th onclick="sortTable('date')">매입일자 ↕️</th>
                             <th onclick="sortTable('shares')">보유 주식수 ↕️</th>
                             <th onclick="sortTable('purchasePrice')">매입단가 ↕️</th>
-                            <th onclick="sortTable('currentPrice')">현재가 ↕️</th>
+                            <th onclick="sortTable('currentPrice')">현재가(실시간) ↕️</th>
                             <th onclick="sortTable('investAmount')">투자금액 ↕️</th>
                             <th onclick="sortTable('profit')">수익금액 ↕️</th>
                             <th onclick="sortTable('returnRate')">수익률 ↕️</th>
@@ -203,35 +206,31 @@
 </div>
 
 <script>
-    const currentPrices = {
-        "삼성전자": 82000,
-        "SK하이닉스": 180000,
-        "네이버": 195000,
-        "카카오": 53000
+    // [핵심 변경 1] 하드코딩된 가격 대신, 종목 이름과 Yahoo Ticker를 연결하는 사전(Map)을 만듭니다.
+    const tickerMap = {
+        "삼성전자": "005930.KS",
+        "SK하이닉스": "000660.KS",
+        "현대차": "005380.KS",
+        "네이버": "035420.KS",
+        "카카오": "035720.KQ"
     };
+
+    // 실시간 가격을 저장할 빈 객체
+    let currentPrices = {}; 
 
     let portfolio = JSON.parse(localStorage.getItem('myStockPortfolio')) || [];
     let targetRate = localStorage.getItem('myTargetRate') || 10;
     document.getElementById('targetRateInput').value = targetRate;
     let portfolioChart = null; 
 
-    // =========================================
-    // [신규 기능] 다크 모드 설정 및 초기화 로직
-    // =========================================
     const themeToggleBtn = document.getElementById('themeToggleBtn');
-    
-    // 페이지가 열릴 때 저장된 테마 확인
     if (localStorage.getItem('myAppTheme') === 'dark') {
         document.body.classList.add('dark-mode');
         themeToggleBtn.innerText = '☀️ 라이트 모드';
     }
 
-    // 테마 토글 버튼 클릭 시 실행되는 함수
     function toggleTheme() {
-        // body 태그에 'dark-mode' 클래스가 있으면 빼고, 없으면 넣음
         document.body.classList.toggle('dark-mode');
-        
-        // 현재 상태를 판단하여 로컬스토리지에 저장하고 버튼 글자 변경
         if (document.body.classList.contains('dark-mode')) {
             localStorage.setItem('myAppTheme', 'dark');
             themeToggleBtn.innerText = '☀️ 라이트 모드';
@@ -239,11 +238,8 @@
             localStorage.setItem('myAppTheme', 'light');
             themeToggleBtn.innerText = '🌙 다크 모드';
         }
-        
-        // 다크 모드일 때 차트 글씨색도 바뀌어야 하므로 차트를 다시 그림
         drawChart(); 
     }
-    // =========================================
 
     function switchTab(tabId, btnId) {
         document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
@@ -289,25 +285,28 @@
             alert('모든 항목을 올바르게 입력해주세요.');
             return;
         }
-        if (!currentPrices[stockName]) {
-            alert('현재 등록되지 않은 종목입니다.');
+        // 사용자가 입력한 종목이 tickerMap에 있는지 확인
+        if (!tickerMap[stockName]) {
+            alert('현재 실시간 조회가 지원되지 않는 종목입니다. 목록에서 선택해주세요.');
             return;
         }
 
         portfolio.push({
-            name: stockName, date: purchaseDate, shares: shares, 
-            purchasePrice: purchasePrice, currentPrice: currentPrices[stockName]
+            name: stockName, date: purchaseDate, shares: shares, purchasePrice: purchasePrice
         });
         
         saveToLocalStorage(); 
-        updateUI();
-
+        
+        // 추가한 뒤 UI를 바로 업데이트
         document.getElementById('stockSelect').value = '';
         document.getElementById('purchaseDate').value = '';
         sharesInput.value = '';
         priceInput.value = '';
         investAmountInput.value = '';
+        
         switchTab('tab-view', 'btn-view');
+        // 새 종목이 추가되었으니 실시간 주가를 다시 불러옵니다.
+        fetchLivePrices(); 
     }
 
     function deleteInvestment(index) {
@@ -332,6 +331,49 @@
         switchTab('tab-input', 'btn-input');
     }
 
+    // =========================================
+    // [핵심 변경 2] Yahoo Finance API + CORS Proxy 호출 함수
+    // =========================================
+    async function fetchLivePrices() {
+        const loadingMsg = document.getElementById('loadingMsg');
+        loadingMsg.style.display = 'inline'; // 로딩 메시지 표시
+
+        // 포트폴리오에 있는 고유한 종목 이름만 추출
+        const uniqueStocks = [...new Set(portfolio.map(item => item.name))];
+
+        // 각 종목별로 API 호출
+        for (const stockName of uniqueStocks) {
+            const ticker = tickerMap[stockName];
+            if (ticker) {
+                // Yahoo Finance 차트 API 주소
+                const yahooUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${ticker}`;
+                // 브라우저 차단을 막기 위한 프록시 주소 (allorigins)
+                const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(yahooUrl)}`;
+
+                try {
+                    const response = await fetch(proxyUrl);
+                    const data = await response.json();
+                    
+                    // 프록시를 통해 받은 데이터(문자열)를 다시 JSON 객체로 변환
+                    const parsedData = JSON.parse(data.contents);
+                    
+                    // Yahoo API 구조 깊숙한 곳에서 현재가(regularMarketPrice) 추출
+                    const price = parsedData.chart.result[0].meta.regularMarketPrice;
+                    
+                    // 가져온 가격을 currentPrices 객체에 저장
+                    currentPrices[stockName] = price;
+                } catch (error) {
+                    console.error(`${stockName} 가격 가져오기 실패:`, error);
+                    // 실패 시 임시로 0원 처리 또는 기존 가격 유지
+                    if(!currentPrices[stockName]) currentPrices[stockName] = 0; 
+                }
+            }
+        }
+
+        loadingMsg.style.display = 'none'; // 로딩 메시지 숨김
+        updateUI(); // 가격을 다 가져왔으니 화면 다시 그리기
+    }
+
     function drawChart() {
         const ctx = document.getElementById('portfolioChart').getContext('2d');
         const aggregatedData = {};
@@ -344,7 +386,6 @@
         const labels = Object.keys(aggregatedData);
         const data = Object.values(aggregatedData);
 
-        // [신규 기능] 다크 모드 여부에 따라 차트 글자 색상 결정
         const isDark = document.body.classList.contains('dark-mode');
         const chartTextColor = isDark ? '#e0e0e0' : '#333';
 
@@ -356,14 +397,14 @@
                 datasets: [{ 
                     data: data, 
                     backgroundColor: ['#3498db', '#e74c3c', '#f1c40f', '#2ecc71', '#9b59b6', '#34495e'],
-                    borderColor: isDark ? '#1e1e1e' : '#fff' // 다크모드일때 차트 경계선 색 변경
+                    borderColor: isDark ? '#1e1e1e' : '#fff' 
                 }] 
             },
             options: { 
                 responsive: true, 
                 plugins: { 
-                    legend: { position: 'bottom', labels: { color: chartTextColor } }, // 범례 글자색
-                    title: { display: true, text: '투자 원금 기준 포트폴리오 비중', color: chartTextColor } // 제목 글자색
+                    legend: { position: 'bottom', labels: { color: chartTextColor } }, 
+                    title: { display: true, text: '투자 원금 기준 포트폴리오 비중', color: chartTextColor } 
                 } 
             }
         });
@@ -378,11 +419,15 @@
 
         portfolio.sort((a, b) => {
             let valA, valB;
+            const currentPriceA = currentPrices[a.name] || 0;
+            const currentPriceB = currentPrices[b.name] || 0;
+
             const investA = a.shares * a.purchasePrice;
-            const profitA = (a.shares * a.currentPrice) - investA;
+            const profitA = (a.shares * currentPriceA) - investA;
             const returnA = investA > 0 ? (profitA / investA) * 100 : 0;
+            
             const investB = b.shares * b.purchasePrice;
-            const profitB = (b.shares * b.currentPrice) - investB;
+            const profitB = (b.shares * currentPriceB) - investB;
             const returnB = investB > 0 ? (profitB / investB) * 100 : 0;
 
             if (column === 'name') { valA = a.name; valB = b.name; }
@@ -390,6 +435,7 @@
             else if (column === 'investAmount') { valA = investA; valB = investB; }
             else if (column === 'profit') { valA = profitA; valB = profitB; }
             else if (column === 'returnRate') { valA = returnA; valB = returnB; }
+            else if (column === 'currentPrice') { valA = currentPriceA; valB = currentPriceB; }
             else { valA = a[column]; valB = b[column]; } 
 
             if (valA < valB) return isAscending ? -1 : 1;
@@ -407,23 +453,30 @@
         let sumValue = 0;  
 
         portfolio.forEach((item, index) => {
+            // 이제 item.currentPrice 대신 실시간으로 받아온 currentPrices 객체에서 값을 꺼냅니다.
+            const livePrice = currentPrices[item.name] || 0; 
+
             const investAmount = item.shares * item.purchasePrice; 
-            const currentValue = item.shares * item.currentPrice;  
+            const currentValue = item.shares * livePrice;  
             const profit = currentValue - investAmount;            
-            const returnRate = (profit / investAmount) * 100;      
+            const returnRate = investAmount > 0 ? (profit / investAmount) * 100 : 0;      
 
             sumInvest += investAmount;
             sumValue += currentValue;
 
             let isTargetReached = false;
             let badgeHTML = '';
-            if(targetRate !== '' && targetRate !== 0 && returnRate >= targetRate) {
+            // livePrice가 0보다 클 때(데이터를 정상적으로 받아왔을 때)만 목표 도달 계산
+            if(livePrice > 0 && targetRate !== '' && targetRate !== 0 && returnRate >= targetRate) {
                 isTargetReached = true;
                 badgeHTML = `<span class="badge">🎯 달성</span>`;
             }
 
             const colorClass = profit > 0 ? 'positive' : (profit < 0 ? 'negative' : '');
             const rowClass = isTargetReached ? 'highlight-row' : ''; 
+            
+            // 가격을 못 불러온 경우(로딩중이거나 실패) '불러오는 중...' 표시
+            const displayPrice = livePrice > 0 ? livePrice.toLocaleString() + ' 원' : '불러오는 중...';
 
             const row = `
                 <tr class="${rowClass}">
@@ -431,10 +484,10 @@
                     <td>${item.date}</td>
                     <td>${item.shares.toLocaleString()} 주</td>
                     <td>${item.purchasePrice.toLocaleString()} 원</td>
-                    <td>${item.currentPrice.toLocaleString()} 원</td>
+                    <td><b>${displayPrice}</b></td>
                     <td>${investAmount.toLocaleString()} 원</td>
-                    <td class="${colorClass}">${profit.toLocaleString()} 원</td>
-                    <td class="${colorClass}">${returnRate.toFixed(2)}%</td>
+                    <td class="${colorClass}">${livePrice > 0 ? profit.toLocaleString() + ' 원' : '-'}</td>
+                    <td class="${colorClass}">${livePrice > 0 ? returnRate.toFixed(2) + '%' : '-'}</td>
                     <td>
                         <button class="btn-small btn-edit" onclick="editInvestment(${index})">수정</button>
                         <button class="btn-small btn-delete" onclick="deleteInvestment(${index})">삭제</button>
@@ -466,7 +519,8 @@
         drawChart();
     }
 
-    updateUI();
+    // 페이지가 처음 열릴 때 실시간 가격을 즉시 가져옵니다.
+    fetchLivePrices();
 </script>
 
 </body>
