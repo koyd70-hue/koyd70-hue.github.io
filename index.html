@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>나의 주식 포트폴리오 (KRX API)</title>
+    <title>나의 주식 포트폴리오</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         body { font-family: 'Malgun Gothic', sans-serif; background-color: #f4f7f6; color: #333; padding: 15px; margin: 0; transition: 0.3s; }
@@ -20,7 +20,7 @@
         .tab-content { display: none; }
         .tab-content.active { display: block; }
 
-        .card { background: #fff; padding: 20px; border-radius: 0 0 8px 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); margin-bottom: 20px; }
+        .card { background: #fff; padding: 20px; border-radius: 0 0 8px 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
         h2 { color: #2c3e50; margin-top: 0; font-size: 20px; }
         
         .form-group { margin-bottom: 15px; }
@@ -35,6 +35,7 @@
         .btn-main { background-color: #3498db; color: white; border: none; padding: 12px 15px; border-radius: 4px; cursor: pointer; font-size: 16px; width: 100%; font-weight: bold; }
         .btn-main:hover { background-color: #2980b9; }
 
+        /* [신규] 새로고침 버튼 스타일 */
         .action-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
         .btn-refresh { background-color: #9b59b6; color: white; border: none; padding: 10px 15px; border-radius: 4px; cursor: pointer; font-size: 14px; font-weight: bold; transition: background-color 0.3s; }
         .btn-refresh:hover { background-color: #8e44ad; }
@@ -43,10 +44,6 @@
         .dash-box { flex: 1; background: #ecf0f1; padding: 15px; border-radius: 8px; text-align: center; }
         .dash-box h3 { margin-top: 0; font-size: 13px; color: #7f8c8d; }
         .dash-box p { font-size: 18px; font-weight: bold; margin: 0; }
-        
-        .settings-bar { background-color: #fff3cd; padding: 15px; border-radius: 8px; margin-bottom: 20px; display: flex; flex-direction: column; gap: 10px; border: 1px solid #ffeeba; }
-        .settings-bar input { flex: 1; }
-        
         .target-setting { background-color: #e8f4f8; padding: 15px; border-radius: 8px; margin-bottom: 20px; display: flex; align-items: center; justify-content: space-between; }
         
         .positive { color: #e74c3c; }
@@ -84,7 +81,6 @@
         body.dark-mode .btn-theme-toggle { background: #f1c40f; color: #333; }
         body.dark-mode .btn-search { background-color: #2ecc71; color: #121212; }
         body.dark-mode .btn-refresh { background-color: #bb86fc; color: #121212; }
-        body.dark-mode .settings-bar { background-color: #4a4a2a; border-color: #666633; }
 
     </style>
 </head>
@@ -92,17 +88,8 @@
 
 <div class="container">
     <div class="header-top">
-        <h1>📈 나의 주식 포트폴리오 (KRX 연동)</h1>
+        <h1>📈 나의 주식 포트폴리오</h1>
         <button id="themeToggleBtn" class="btn-theme-toggle" onclick="toggleTheme()">🌙 다크 모드</button>
-    </div>
-
-    <div class="settings-bar">
-        <label for="krxApiKey" style="color: #d35400; font-weight: bold;">🔑 공공데이터포털(KRX) API 인증키 설정</label>
-        <div style="display: flex; gap: 5px;">
-            <input type="password" id="krxApiKey" placeholder="data.go.kr에서 발급받은 '일반 인증키(Encoding)'를 입력하세요">
-            <button class="btn-search" onclick="saveApiKey()">키 저장</button>
-        </div>
-        <span style="font-size: 12px; color: #7f8c8d;">※ API 키가 있어야만 한국 주식(KRX) 검색 및 가격 조회가 가능합니다. (새로고침 시 유지됨)</span>
     </div>
 
     <div class="tab-menu">
@@ -114,10 +101,10 @@
         <div class="card">
             <h2>종목 정보 입력</h2>
             <div class="form-group">
-                <label for="searchInput">한국 주식 종목명 검색 (예: 삼성전자)</label>
+                <label for="searchInput">종목명 검색 (티커, 영문, 한글)</label>
                 <div class="search-area">
-                    <input type="text" id="searchInput" placeholder="정확한 종목명(한글)을 입력하세요">
-                    <button class="btn-search" onclick="searchKrxAPI()" id="searchBtn">검색</button>
+                    <input type="text" id="searchInput" placeholder="예: AAPL, TSLA, 삼성전자">
+                    <button class="btn-search" onclick="searchStockAPI()" id="searchBtn">검색</button>
                 </div>
                 <select id="stockSelect">
                     <option value="">검색 후 정확한 종목을 선택하세요</option>
@@ -133,14 +120,14 @@
                 <input type="number" id="shares" placeholder="예: 10" min="1">
             </div>
             <div class="form-group">
-                <label for="purchasePrice">매입단가 (원)</label>
-                <input type="number" id="purchasePrice" placeholder="예: 75000" min="0">
+                <label for="purchasePrice">매입단가 (해당 통화 기준)</label>
+                <input type="number" id="purchasePrice" placeholder="예: 150 또는 75000" min="0">
             </div>
             <div class="form-group">
-                <label for="investAmount">총 투자금액 (원)</label>
+                <label for="investAmount">총 투자금액</label>
                 <input type="text" id="investAmount" readonly placeholder="수량과 단가를 입력하면 계산됩니다">
             </div>
-            <button class="btn-main" onclick="addInvestment()" id="saveBtn">투자 내역 저장하기</button>
+            <button class="btn-main" onclick="addInvestment()" id="saveBtn">투자 내역 저장하기 (실시간 주가 조회)</button>
         </div>
     </div>
 
@@ -148,7 +135,7 @@
         <div class="card">
             <div class="action-bar">
                 <h2>나의 포트폴리오 현황</h2>
-                <button class="btn-refresh" id="refreshBtn" onclick="refreshAllPrices()">🔄 최신 종가 모두 새로고침</button>
+                <button class="btn-refresh" id="refreshBtn" onclick="refreshAllPrices()">🔄 최신 주가 모두 새로고침</button>
             </div>
             
             <div class="dashboard">
@@ -169,6 +156,10 @@
                     <p id="totalReturn">0.00%</p>
                 </div>
             </div>
+            
+            <p style="font-size: 12px; color: #7f8c8d; text-align: center;">
+                * 주의: 서로 다른 통화(달러, 원화)를 혼합해서 추가할 경우 총합계가 왜곡될 수 있습니다.
+            </p>
 
             <div class="target-setting">
                 <label for="targetRateInput">🎯 알림을 받을 목표 수익률을 설정하세요 (%):</label>
@@ -183,11 +174,11 @@
                 <table>
                     <thead>
                         <tr>
-                            <th onclick="sortTable('name')">종목명 (코드) ↕️</th>
+                            <th onclick="sortTable('name')">종목명 (티커) ↕️</th>
                             <th onclick="sortTable('date')">매입일자 ↕️</th>
                             <th onclick="sortTable('shares')">주식수 ↕️</th>
                             <th onclick="sortTable('purchasePrice')">매입단가 ↕️</th>
-                            <th onclick="sortTable('currentPrice')">최신종가 ↕️</th>
+                            <th onclick="sortTable('currentPrice')">현재가(조회시점) ↕️</th>
                             <th onclick="sortTable('investAmount')">투자금액 ↕️</th>
                             <th onclick="sortTable('profit')">수익금액 ↕️</th>
                             <th onclick="sortTable('returnRate')">수익률 ↕️</th>
@@ -205,14 +196,9 @@
 <script>
     let portfolio = JSON.parse(localStorage.getItem('myStockPortfolio')) || [];
     let targetRate = localStorage.getItem('myTargetRate') || 10;
-    
-    // API 키 초기화
-    let krxApiKey = localStorage.getItem('myKrxApiKey') || '';
-    document.getElementById('krxApiKey').value = krxApiKey;
     document.getElementById('targetRateInput').value = targetRate;
     let portfolioChart = null; 
 
-    // 다크 모드
     const themeToggleBtn = document.getElementById('themeToggleBtn');
     if (localStorage.getItem('myAppTheme') === 'dark') {
         document.body.classList.add('dark-mode');
@@ -252,37 +238,18 @@
 
     function saveToLocalStorage() { localStorage.setItem('myStockPortfolio', JSON.stringify(portfolio)); }
     function saveTargetRate() { targetRate = Number(document.getElementById('targetRateInput').value); localStorage.setItem('myTargetRate', targetRate); updateUI(); }
-    
-    // [신규] API 키 저장 함수
-    function saveApiKey() {
-        krxApiKey = document.getElementById('krxApiKey').value.trim();
-        if(!krxApiKey) { alert("API 키를 입력해주세요."); return; }
-        localStorage.setItem('myKrxApiKey', krxApiKey);
-        alert("API 키가 안전하게 저장되었습니다.");
-    }
 
-    // =========================================
-    // [신규 로직] KRX(공공데이터포털) 주식 시세 검색
-    // =========================================
-    async function searchKrxAPI() {
-        if (!krxApiKey) return alert('상단에서 공공데이터포털 API 키를 먼저 설정해주세요.');
-        
+    async function searchStockAPI() {
         const query = document.getElementById('searchInput').value.trim();
-        if (!query) return alert('검색할 종목명을 입력해주세요. (예: 삼성전자)');
+        if (!query) return alert('검색어를 입력해주세요.');
 
         const searchBtn = document.getElementById('searchBtn');
         searchBtn.innerText = '검색 중...';
         searchBtn.disabled = true;
 
         try {
-            // 금융위원회_주식시세정보 API 엔드포인트
-            const baseUrl = 'https://apis.data.go.kr/1160100/service/rest/StockMarketInfoService/getStockPriceInfo';
-            // 파라미터 조합 (종목명으로 검색, JSON 응답 요청, 한 번에 최대 5개 가져오기)
-            const queryParams = `?serviceKey=${krxApiKey}&resultType=json&itmsNm=${encodeURIComponent(query)}&numOfRows=5`;
-            const krxUrl = baseUrl + queryParams;
-            
-            // CORS 우회 프록시 사용
-            const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(krxUrl)}`;
+            const yahooUrl = `https://query2.finance.yahoo.com/v1/finance/search?q=${encodeURIComponent(query)}`;
+            const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(yahooUrl)}`;
 
             const response = await fetch(proxyUrl);
             const data = await response.json();
@@ -290,76 +257,91 @@
             const selectEl = document.getElementById('stockSelect');
             selectEl.innerHTML = '<option value="">종목을 선택하세요</option>';
 
-            // 응답 데이터 파싱 (공공데이터포털 구조)
-            const items = data.response?.body?.items?.item;
-
-            if (items && items.length > 0) {
-                items.forEach(stock => {
-                    const option = document.createElement('option');
-                    // value에는 종목코드(srtnCd)와 종가(clpr)를 함께 저장하여 추가 시 사용
-                    option.value = JSON.stringify({ symbol: stock.srtnCd, price: stock.clpr }); 
-                    option.textContent = `${stock.itmsNm} (${stock.srtnCd}) - 최신종가: ${Number(stock.clpr).toLocaleString()}원`;
-                    selectEl.appendChild(option);
+            if (data.quotes && data.quotes.length > 0) {
+                data.quotes.forEach(quote => {
+                    if (quote.quoteType === 'EQUITY' || quote.quoteType === 'ETF') {
+                        const option = document.createElement('option');
+                        option.value = quote.symbol; 
+                        option.textContent = `${quote.shortname || quote.longname} (${quote.symbol})`;
+                        selectEl.appendChild(option);
+                    }
                 });
             } else {
-                selectEl.innerHTML = '<option value="">검색 결과가 없습니다. 이름을 정확히 입력하세요.</option>';
+                selectEl.innerHTML = '<option value="">검색 결과가 없습니다.</option>';
             }
         } catch (error) {
-            console.error("KRX API Error:", error);
-            alert('검색 중 오류가 발생했습니다. API 키가 유효한지 확인해주세요.');
+            console.error("API Error:", error);
+            alert('검색 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.');
         } finally {
             searchBtn.innerText = '검색';
             searchBtn.disabled = false;
         }
     }
 
-    function addInvestment() {
-        const selectedValue = document.getElementById('stockSelect').value;
+    async function addInvestment() {
+        const symbol = document.getElementById('stockSelect').value;
         const stockNameText = document.getElementById('stockSelect').options[document.getElementById('stockSelect').selectedIndex].text;
         const purchaseDate = document.getElementById('purchaseDate').value;
         const shares = Number(sharesInput.value);
         const purchasePrice = Number(priceInput.value);
 
-        if (!selectedValue || !purchaseDate || shares <= 0 || purchasePrice <= 0) {
+        if (!symbol || !purchaseDate || shares <= 0 || purchasePrice <= 0) {
             alert('모든 항목을 올바르게 선택 및 입력해주세요.');
             return;
         }
 
-        // 선택된 값에서 코드와 가격 추출
-        const stockData = JSON.parse(selectedValue);
-        const symbol = stockData.symbol;
-        const currentPrice = Number(stockData.price);
-        
-        // 화면에 표시하기 위해 종목명만 파싱 (예: "삼성전자 (005930) - ... " 에서 이름만 추출)
-        const cleanName = stockNameText.split(' (')[0];
+        const saveBtn = document.getElementById('saveBtn');
+        saveBtn.innerText = '실시간 주가 조회 중...';
+        saveBtn.disabled = true;
 
-        portfolio.push({
-            name: cleanName, 
-            symbol: symbol,
-            date: purchaseDate, 
-            shares: shares, 
-            purchasePrice: purchasePrice, 
-            currentPrice: currentPrice // 검색 시 가져온 최신 종가
-        });
-        
-        saveToLocalStorage(); 
-        updateUI();
+        try {
+            const yahooChartUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}`;
+            const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(yahooChartUrl)}`;
 
-        document.getElementById('searchInput').value = '';
-        document.getElementById('stockSelect').innerHTML = '<option value="">검색 후 정확한 종목을 선택하세요</option>';
-        document.getElementById('purchaseDate').value = '';
-        sharesInput.value = '';
-        priceInput.value = '';
-        investAmountInput.value = '';
-        switchTab('tab-view', 'btn-view');
+            const response = await fetch(proxyUrl);
+            const data = await response.json();
+
+            const currentPrice = data.chart.result[0].meta.regularMarketPrice;
+            const currency = data.chart.result[0].meta.currency; 
+
+            portfolio.push({
+                name: stockNameText, 
+                symbol: symbol,
+                currency: currency,
+                date: purchaseDate, 
+                shares: shares, 
+                purchasePrice: purchasePrice, 
+                currentPrice: currentPrice
+            });
+            
+            saveToLocalStorage(); 
+            updateUI();
+
+            document.getElementById('searchInput').value = '';
+            document.getElementById('stockSelect').innerHTML = '<option value="">검색 후 정확한 종목을 선택하세요</option>';
+            document.getElementById('purchaseDate').value = '';
+            sharesInput.value = '';
+            priceInput.value = '';
+            investAmountInput.value = '';
+            switchTab('tab-view', 'btn-view');
+
+        } catch (error) {
+            console.error("API Error:", error);
+            alert('현재가를 가져오는 데 실패했습니다.');
+        } finally {
+            saveBtn.innerText = '투자 내역 저장하기 (실시간 주가 조회)';
+            saveBtn.disabled = false;
+        }
     }
 
     // =========================================
-    // [신규 로직] KRX API를 통한 일괄 새로고침
+    // [신규 기능] 포트폴리오 내 모든 종목 주가 일괄 업데이트
     // =========================================
     async function refreshAllPrices() {
-        if (!krxApiKey) return alert('API 키가 설정되어 있지 않습니다.');
-        if (portfolio.length === 0) return alert('포트폴리오에 등록된 주식이 없습니다.');
+        if (portfolio.length === 0) {
+            alert('포트폴리오에 등록된 주식이 없습니다.');
+            return;
+        }
 
         const refreshBtn = document.getElementById('refreshBtn');
         const originalText = refreshBtn.innerText;
@@ -367,40 +349,40 @@
         refreshBtn.disabled = true;
 
         try {
+            // 중복 조회를 막기 위한 빈 보관함 (예: 삼성전자가 2개면 한 번만 조회)
             const fetchedPrices = {};
 
+            // 포트폴리오의 각 항목을 순회
             for (let i = 0; i < portfolio.length; i++) {
                 const item = portfolio[i];
 
+                // 아직 조회하지 않은 종목 기호(티커)라면 API 호출
                 if (!fetchedPrices[item.symbol]) {
-                    // 종목코드(srtnCd)를 이용하여 단건 조회
-                    const baseUrl = 'https://apis.data.go.kr/1160100/service/rest/StockMarketInfoService/getStockPriceInfo';
-                    const queryParams = `?serviceKey=${krxApiKey}&resultType=json&srtnCd=${item.symbol}`;
-                    const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(baseUrl + queryParams)}`;
+                    const yahooChartUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${item.symbol}`;
+                    const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(yahooChartUrl)}`;
                     
                     const response = await fetch(proxyUrl);
                     const data = await response.json();
                     
-                    const fetchedItems = data.response?.body?.items?.item;
-                    if (fetchedItems && fetchedItems.length > 0) {
-                        fetchedPrices[item.symbol] = Number(fetchedItems[0].clpr); // clpr = 종가
-                    }
+                    // 가격을 꺼내서 보관함에 저장
+                    fetchedPrices[item.symbol] = data.chart.result[0].meta.regularMarketPrice;
                 }
 
-                // 새로운 가격이 조회되었다면 업데이트
-                if(fetchedPrices[item.symbol]) {
-                    portfolio[i].currentPrice = fetchedPrices[item.symbol];
-                }
+                // 보관함에 있는 최신 가격으로 내 포트폴리오 항목 업데이트
+                portfolio[i].currentPrice = fetchedPrices[item.symbol];
             }
 
+            // 모든 업데이트가 끝나면 브라우저에 저장하고 화면 다시 그리기
             saveToLocalStorage();
             updateUI();
-            alert('모든 주가가 KRX 최신 종가로 업데이트 되었습니다! 🎉');
+            
+            alert('모든 주가가 최신 데이터로 업데이트 되었습니다! 🎉');
 
         } catch (error) {
             console.error("Refresh Error:", error);
-            alert('업데이트 중 오류가 발생했습니다. API 호출 한도 초과이거나 키가 잘못되었을 수 있습니다.');
+            alert('일부 주가를 업데이트하는 과정에서 오류가 발생했습니다. 잠시 후 시도해주세요.');
         } finally {
+            // 버튼 상태 원래대로 복구
             refreshBtn.innerText = originalText;
             refreshBtn.disabled = false;
         }
@@ -413,7 +395,7 @@
     function editInvestment(index) {
         alert("수정 시 검색을 다시 진행하여 종목을 세팅해야 합니다.");
         const item = portfolio[index];
-        document.getElementById('searchInput').value = item.name;
+        document.getElementById('searchInput').value = item.symbol;
         document.getElementById('purchaseDate').value = item.date;
         sharesInput.value = item.shares;
         priceInput.value = item.purchasePrice;
@@ -441,7 +423,7 @@
         portfolioChart = new Chart(ctx, {
             type: 'pie',
             data: { labels: Object.keys(aggregatedData), datasets: [{ data: Object.values(aggregatedData), backgroundColor: ['#3498db', '#e74c3c', '#f1c40f', '#2ecc71', '#9b59b6', '#34495e'], borderColor: isDark ? '#1e1e1e' : '#fff' }] },
-            options: { responsive: true, plugins: { legend: { position: 'bottom', labels: { color: chartTextColor } }, title: { display: true, text: '투자 원금 비중', color: chartTextColor } } }
+            options: { responsive: true, plugins: { legend: { position: 'bottom', labels: { color: chartTextColor } }, title: { display: true, text: '투자 원금 비중 (주의: 서로 다른 통화 합산됨)', color: chartTextColor } } }
         });
     }
 
@@ -501,15 +483,18 @@
             const colorClass = profit > 0 ? 'positive' : (profit < 0 ? 'negative' : '');
             const rowClass = isTargetReached ? 'highlight-row' : ''; 
             
+            const symbolMap = { 'KRW': '₩', 'USD': '$' };
+            const currSymbol = symbolMap[item.currency] || item.currency + ' ';
+
             const row = `
                 <tr class="${rowClass}">
-                    <td style="text-align: left;">${item.name} <span style="font-size:11px; color:#888;">(${item.symbol})</span> ${badgeHTML}</td>
+                    <td style="text-align: left;">${item.name} ${badgeHTML}</td>
                     <td>${item.date}</td>
                     <td>${item.shares.toLocaleString()} 주</td>
-                    <td>₩${item.purchasePrice.toLocaleString()}</td>
-                    <td>₩${item.currentPrice.toLocaleString()}</td>
-                    <td>₩${investAmount.toLocaleString()}</td>
-                    <td class="${colorClass}">₩${profit.toLocaleString()}</td>
+                    <td>${currSymbol}${item.purchasePrice.toLocaleString()}</td>
+                    <td>${currSymbol}${item.currentPrice.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
+                    <td>${currSymbol}${investAmount.toLocaleString()}</td>
+                    <td class="${colorClass}">${currSymbol}${profit.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
                     <td class="${colorClass}">${returnRate.toFixed(2)}%</td>
                     <td>
                         <button class="btn-small btn-edit" onclick="editInvestment(${index})">수정</button>
@@ -526,11 +511,11 @@
 
         const totalColorClass = totalProfit > 0 ? 'positive' : (totalProfit < 0 ? 'negative' : '');
 
-        document.getElementById('totalInvest').innerText = `₩${sumInvest.toLocaleString()}`;
-        document.getElementById('totalValue').innerText = `₩${sumValue.toLocaleString()}`;
+        document.getElementById('totalInvest').innerText = sumInvest.toLocaleString();
+        document.getElementById('totalValue').innerText = sumValue.toLocaleString();
         
         const profitEl = document.getElementById('totalProfit');
-        profitEl.innerText = `₩${totalProfit.toLocaleString()}`;
+        profitEl.innerText = totalProfit.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
         profitEl.className = totalColorClass;
 
         const returnEl = document.getElementById('totalReturn');
